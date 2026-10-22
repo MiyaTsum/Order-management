@@ -255,6 +255,56 @@ body{
                     }
                 }
             }
+            &.catalogue{
+                display: flex;
+                flex-direction: column;
+
+                .head{
+                    padding: .5em 1em;
+                    background-color: var(--bg_com);
+                    display: flex;
+                    align-items: center;
+                    gap: .5em;
+                    
+                    .exit{
+                        background-color: transparent;
+                        height: 25px;
+                        aspect-ratio: 1 / 1;
+                        border-radius: 50%;
+                        border: none;
+
+                        &:hover{
+                            background-color: rgba(100, 100, 100, .1);
+                        }
+                    }
+                }
+                .main{
+                    flex: 1;
+
+                    &.loading, &.failed{
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+
+                    }
+                    &.failed{
+                        gap: .5em;
+
+                        svg{
+                            margin-bottom: .5em;
+                        }
+                        button{
+                            padding: .5em 1em;
+                            font-weight: 600;
+                            color: var(--bg_com);
+                            background-color: var(--them_col);
+                            border: none;
+                            border-radius: 1em;
+                        }
+                    }
+                }
+            }
         }
     }
     #popup{
@@ -270,7 +320,7 @@ body{
         gap: .5em;
         padding: .5em;
         transition: transform .2s ease-in-out, opacity .2s ease-in-out;
-
+        
         button#undo{
             background-color: var(--them_col);
             padding: .2em .5em;
@@ -283,6 +333,20 @@ body{
             opacity: 0;
             z-index: -1;
         }
+    }
+}
+.loader{
+    margin: 1em;
+    height: 50px;
+    width: 50px;
+    background: conic-gradient(rgba(100, 100, 100, .1) 70%, rgba(100, 100, 100, .5) 70%);
+    border-radius: 50%;
+    mask-image: radial-gradient(circle at center, transparent 15px, black 20px);
+    animation: load 1s cubic-bezier(0.25, 0.5, 1, 1) infinite;
+}
+@keyframes load{
+    to{
+        transform: rotate(360deg);
     }
 }
 @keyframes fade{

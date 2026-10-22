@@ -22,13 +22,33 @@ router.get('/style.css', (_, res) => {
     res.status(200).send(file)
   })
 })
-router.get('/script.js', (_, res) => {
-  fs.readFile('./src/script.js', (err, file) => {
+router.get('/JS/script.js', (_, res) => {
+  fs.readFile('./src/JS/script.js', (err, file) => {
     if (err){
       res.status(500).json({ 'erreur': err})
       return
     }
-    res.type('text/js')
+    res.type('application/javascript')
+    res.status(200).send(file)
+  })
+})
+router.get('/JS/features.js', (_, res) => {
+  fs.readFile('./src/JS/features.js', (err, file) => {
+    if (err){
+      res.status(500).json({ 'erreur': err })
+      return
+    }
+    res.type('application/javascript')
+    res.status(200).send(file)
+  })
+})
+router.get('/JS/component.js', (_, res) => {
+  fs.readFile('./src/JS/component.js', (err, file) => {
+    if (err){
+      res.status(500).json({ 'erreur': err })
+      return
+    }
+    res.type('application/javascript')
     res.status(200).send(file)
   })
 })
