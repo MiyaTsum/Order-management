@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order management</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <main>
+        <header>
+            <h2>Commandes</h2>
+            <nav>
+                <button class="selected" id="total"><span>Total </span><span></span></button>
+                <button id="attente"><span>En attente </span><span></span></button>
+                <button id="servie"><span>Servie </span><span></span></button>
+                <button id="payée"><span>Payé </span><span></span></button>
+            </nav>
+        </header>
+        <div>
+            <div id="search">
+                <input type="number" placeholder="ID de commande" min="1">
+                <button disabled>Rechercher</button>
+            </div>
+            <div id="liste"></div>
+        </div>
+        <footer>
+            <button id="create">Créer</button>
+        </footer>
+    </main>
+    <section id="modal">
+        <article></article>
+    </section>
+    <section id="popup" class="hidden">
+        <p>Commande supprimée</p>
+        <button id="undo">
+            <span>Annuler</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none"><path d="M7.12988 18.3101H15.1299C17.8899 18.3101 20.1299 16.0701 20.1299 13.3101C20.1299 10.5501 17.8899 8.31006 15.1299 8.31006H4.12988" stroke="#f1f0ff" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.43012 10.8099L3.87012 8.24994L6.43012 5.68994" stroke="#f1f0ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </section>
+    <script src="./script.js"></script>
+</body>
+</html>

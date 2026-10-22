@@ -5,6 +5,7 @@ const app = express();
 app.use(express.json());   // pour lire les données envoyées par le front
 
 app.use('/plat', require('./routes/plat'));
+app.use(require('./routes/interface.js'))
 
 app.listen(process.env.PORT || 3000, () => {
   console.log('Serveur démarré sur http://localhost:' + (process.env.PORT || 3000));
