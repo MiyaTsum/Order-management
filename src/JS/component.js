@@ -97,24 +97,33 @@ export function art_commande(id, table, status, heure){
         //Lors de la suppression de la commande
         options.querySelector('.supp_com').addEventListener('click', () => {
             const backup = [commandes, details_commande] //Sauvegarde en cas d'annnulation de la suppression de la commande
+            const notif = document.createElement('div')
             const delay = setTimeout(() => {
                 popup.classList.add('hidden')
                 popup.removeEventListener('click', undo)
-            }, 5000)
+            }, 10000)
             const undo = () => {
                 clearTimeout(delay)
-                popup.classList.add('hidden')
+                notif.remove()
                 set_commandes(...backup) //Restauration des valeurs précédentes
                 update_commandes_liste()
             }
-
-            popup.classList.remove('hidden')
+            
+            notif.classList.add('popup')
+            notif.innerHTML = `
+                <p>Commande supprimée</p>
+                <button id="undo">
+                    <span>Annuler</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none"><path d="M7.12988 18.3101H15.1299C17.8899 18.3101 20.1299 16.0701 20.1299 13.3101C20.1299 10.5501 17.8899 8.31006 15.1299 8.31006H4.12988" stroke="#f1f0ff" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.43012 10.8099L3.87012 8.24994L6.43012 5.68994" stroke="#f1f0ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            `
+            popup.appendChild(notif)
             modal.style.display = 'none'
             win.innerHTML = ''
             delete_commande(id) //Suppression de la commande
             update_commandes_liste()
 
-            popup.querySelector('button').addEventListener('click', undo)
+            notif.querySelector('button').addEventListener('click', undo)
         })
     })
 

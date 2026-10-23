@@ -15,9 +15,13 @@ flt_servie.addEventListener('click', handleFilter)
 sec_search.querySelector('input').addEventListener('input', (e) => {
     const { target } = e
     const { value } = target
-    const unvalid = !value || parseInt(value) < 1
-    sec_search.querySelector('button').disabled = unvalid
+    sec_search.querySelector('button').disabled = !value
     update_commandes_liste()
 })
-sec_search.querySelector('button').addEventListener('click', update_commandes_liste)
+sec_search.querySelector('button').addEventListener('click', (e) => {
+    const { currentTarget: target } = e
+    target.previousElementSibling.value = ''
+    target.disabled = true
+    update_commandes_liste()
+})
 btn_create.addEventListener('click', create_commande)
