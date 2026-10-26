@@ -17,7 +17,7 @@ export function art_commande(id, table, status, heure){
         <p><span>#${id}</span><span class="status ${status}">${status}</span></p>
         <p><strong>Table n°</strong><span>${table}</span>
         <p><strong>Créée le: </strong><span>${heure}</span></p>
-        <button>
+        <button title="Montrer détails" aria-label="Montrer détails">
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.49 2 2 6.49 2 12C2 17.51 6.49 22 12 22C17.51 22 22 17.51 22 12C22 6.49 17.51 2 12 2ZM8 13C7.44 13 7 12.55 7 12C7 11.45 7.45 11 8 11C8.55 11 9 11.45 9 12C9 12.55 8.56 13 8 13ZM12 13C11.44 13 11 12.55 11 12C11 11.45 11.45 11 12 11C12.55 11 13 11.45 13 12C13 12.55 12.56 13 12 13ZM16 13C15.44 13 15 12.55 15 12C15 11.45 15.45 11 16 11C16.55 11 17 11.45 17 12C17 12.55 16.56 13 16 13Z" fill="#a1a0af"/></svg>
         </button>
     `
@@ -50,16 +50,16 @@ export function art_commande(id, table, status, heure){
                 <button class="supp_com">Supprimer</button>
             </div>
             <fieldset class="details">
-                <legend>Détails commande</legend>
+                <legend><strong>Détails commande</strong></legend>
                 <h3>Table n°${table}</h3>
                 <p><strong>Créée le </strong><span>${heure}</span></p>
                 <p><strong>ID: </strong><span>${id}</span></p>
             </fieldset>
             <fieldset class="plats">
-                <legend>Plats commandés</legend>
+                <legend><strong>Plats commandés</strong></legend>
             </fieldset>
             <fieldset class="bill">
-                <legend>Total</legend>
+                <legend><strong>Total</strong></legend>
                 <h3>Total: ${inf.reduce((final, { quantite, prix_uni }) => final + (quantite * prix_uni), 0)}$</h3>
             </fieldset>
         `
@@ -128,4 +128,27 @@ export function art_commande(id, table, status, heure){
     })
 
     return article
+}
+
+export function plat(id, nom_plat, prix, categorie){
+    const plat = document.createElement('div')
+    plat.classList.add('plat')
+    plat.dataset.id = id
+    plat.dataset.categorie = categorie
+    plat.innerHTML += `
+        <div class="inf">
+            <h4>${nom_plat}</h4>
+            <h3>$${prix}</h3>
+        </div>
+        <div class="control">
+            <div class="quantite">
+                <span>x</span>
+                <input type="number" min="1" max="99" >
+            </div>
+            <button class="add">Ajouter</button>
+            <button class="remove">Retirer</button>
+        </div>
+    `
+
+    return plat
 }

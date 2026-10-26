@@ -12,21 +12,21 @@
             <h2>Commandes</h2>
             <nav>
                 <!-- Option de filtrage des commandes -->
-                <button class="selected" id="total"><span>Total </span><span></span></button>
-                <button id="attente"><span>En attente </span><span></span></button>
-                <button id="servie"><span>Servie </span><span></span></button>
-                <button id="payée"><span>Payé </span><span></span></button>
+                <button title="Voir toutes les commandes" class="selected" id="total"><span>Total </span><span></span></button>
+                <button title="Voir les commadnes en attente" id="attente"><span>En attente </span><span></span></button>
+                <button title="Voir les commandes servies" id="servie"><span>Servie </span><span></span></button>
+                <button title="Voir les commandes déjà payées" id="payée"><span>Payé </span><span></span></button>
             </nav>
         </header>
         <div>
             <div id="search">
-                <input type="number" placeholder="ID de commande" min="1">
-                <button disabled>Annuler</button>
+                <input title="Rechercher une commande grâce à son ID" type="number" placeholder="ID de commande" min="1">
+                <button title="Vider la barre de recherche" disabled>Annuler</button>
             </div>
             <div id="liste"></div>
         </div>
         <footer>
-            <button id="create">Créer</button>
+            <button title="Créer une commande" id="create">Créer</button>
         </footer>
     </main>
     <section id="modal">
