@@ -1,4 +1,4 @@
-import { art_commande } from "./component.js"
+import { art_commande, plat } from "./component.js"
 
 const flt_total = document.querySelector('#total')
 const flt_attente = document.querySelector('#attente')
@@ -47,7 +47,12 @@ export function update_commandes_liste(){
     if (!liste_affiché.length){
         //Aucune correspondance
         commandes_liste.classList.add('empty')
-        commandes_liste.innerHTML = '<h3>Aucune commande</h3>'
+        commandes_liste.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none"><path d="M14 5H20" stroke="#7672F1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 8H17" stroke="#7672F1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 11.5C21 16.75 16.75 21 11.5 21C6.25 21 2 16.75 2 11.5C2 6.25 6.25 2 11.5 2" stroke="#7672F1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 22L20 20" stroke="#7672F1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Aucun commande trouvée</h3>
+            <button>Créer</button>
+        `
+        commandes_liste.querySelector('button').addEventListener('click', create_commande)
     } else {
         commandes_liste.classList.remove('empty')
         commandes_liste.innerHTML = ''
@@ -96,29 +101,168 @@ export function delete_commande(id){
 }
 
 //Création d'un commande
-export function create_commande(){
+export async function create_commande(){
     const win = modal.querySelector('article')
+    let categorie = 'entrée'
     let new_com = [] //Pour stocker les plats sélectionnés et leur informations relatives
     
     modal.style.display = 'flex'
     win.classList.add('catalogue')
     win.innerHTML = `
-    <div class="head">
-        <button class='exit'>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14.9998 19.9201L8.47984 13.4001C7.70984 12.6301 7.70984 11.3701 8.47984 10.6001L14.9998 4.08008" stroke="black" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <h3>Catalogue</h3>
+    <div class="header">
+        <div class="head">
+            <button class='exit'>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14.9998 19.9201L8.47984 13.4001C7.70984 12.6301 7.70984 11.3701 8.47984 10.6001L14.9998 4.08008" stroke="black" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <h3>Catalogue</h3>
+            <button disabled>Voir détails</button>
+        </div>
+        <div class="nav">
+            <button data-categorie="entrée" class="selected">Entrée</button>
+            <button data-categorie="plat principal" >Plat principal</button>
+            <button data-categorie="dessert" >Dessert</button>
+        </div>
     </div>
     <div class="main"></div>
-    <div class="footer"></div>
+    <div class="footer">
+        <div class="inf">
+            <input type="number" min="1" placeholder="num table">
+        </div>
+        <div class="control">
+            <button class="cancel">Annuler</button>
+            <button class="confirm" disabled>Confirmer</button>
+        </div>
+    </div>
     `
-    win.querySelector('.head .exit').addEventListener('click', () => {
+    const btn_exit = win.querySelector('.header .head .exit')
+    const btn_nav = win.querySelectorAll('.header .nav button')
+    const btn_cancel = win.querySelector('.footer .control .cancel')
+    const btn_confirm = win.querySelector('.footer .control .confirm')
+    const btn_details = win.querySelector('.header .head button:last-child')
+    const num_table = win.querySelector('.footer .inf input')
+    const cancel = () => {
         win.innerHTML = ''
         win.classList.remove('catalogue')
         modal.style.display = 'none'
+    }
+
+    //Annulation de la création de la commande
+    btn_exit.addEventListener('click', cancel)
+    btn_cancel.addEventListener('click', cancel)
+
+    //Gestion et filtrage des plats par catégorie
+    btn_nav.forEach(each => {
+        each.addEventListener('click', () => {
+            each.classList.add('selected')
+            btn_nav.forEach(btn => {
+                if (btn != each) btn.classList.remove('selected')
+            })
+            categorie = each.dataset.categorie
+            filterCatalogue(categorie)
+        })
     })
 
-    get_plat()
+    //Selection du numéro de table
+    num_table.addEventListener('input', (e) => {
+        const { currentTarget: target } = e
+        const { value } = target
+        btn_confirm.disabled = !value || !new_com.length
+    })
+
+    //Confirmation et envoi des détails de la commande
+    btn_confirm.addEventListener('click', () => {
+        const commande = { table: Number(num_table.value), details: new_com}
+        
+        win.classList.remove('catalogue')
+        win.innerHTML = ''
+        modal.style.display = 'none'
+
+        // fetch(`http://${location.host}/commande`, {
+        //     method: 'POST',
+        //     headers: {
+        //         'content-type': 'application/json'
+        //     },
+        //     body: commande
+        // })
+    })
+
+    //Lister les plats selectionnés
+    btn_details.addEventListener('click', () => {
+        filterCatalogue('added', new_com)
+        btn_nav.forEach(each => each.classList.remove('selected'))
+    })
+    
+    await get_plat()
+    await filterCatalogue(categorie)
+
+    win.querySelectorAll('.main .plat').forEach(each => {
+        const quantite = each.querySelector('.control .quantite input')
+        const btn_add = each.querySelector('.control .add')
+        const btn_remove = each.querySelector('.control .remove')
+        const id = parseInt(each.dataset.id)
+
+        const change_value = (e) => {
+            const { target } = e
+            const { value } = target
+
+            if (value !== ''){
+                new_com = new_com.map(plat => {
+                    const { id_plat } = plat
+    
+                    return id_plat === id ? {...plat, quantite: parseInt(value)} : plat
+                })
+            }
+        }
+        const handleBlur = (e) => {
+            const { target } = e
+            const { value } = target
+            
+            if (!value){
+                target.value = new_com.filter(({ id_plat }) => id_plat === id)[0].quantite
+            }
+        }
+        
+        btn_add.addEventListener('click', () => {
+            each.classList.add('added')
+
+            quantite.value = 1
+            quantite.addEventListener('input', change_value)
+            quantite.addEventListener('blur', handleBlur)
+            
+            new_com.push({ id_plat: id, prix: each.querySelector('h3').innerText.replace('$', '') / 1, quantite: 1 })
+            btn_confirm.disabled = !num_table.value || !new_com.length
+            btn_details.disabled = !new_com.length
+        })
+        btn_remove.addEventListener('click', () => {
+            each.classList.remove('added')
+
+            quantite.removeEventListener('input', change_value)
+            quantite.removeEventListener('blur', handleBlur)
+            
+            new_com = new_com.filter(({ id_plat: ID }) => ID != id)
+            btn_confirm.disabled = !num_table.value || !new_com.length
+            btn_details.disabled = !new_com.length
+
+            for (let i = 0; i < 3; i++) if (btn_nav[i].classList.contains('selected')) return
+            filterCatalogue('added')
+
+            if (!new_com.length){
+                btn_nav[0].classList.add('selected')
+                filterCatalogue('entrée')
+            }
+        })
+    })
+}
+
+async function filterCatalogue(categorie){
+    const win = modal.querySelector('article .main')
+    const plats = win.querySelectorAll('.plat')
+
+    plats.forEach(each => {
+        each.style.display = ( categorie == 'added' ? each.classList.contains('added') : each.dataset.categorie == categorie) ? 'flex' : 'none'
+    })
+
+    return
 }
 
 //Récupération du catalogue de plat à partir de l'API
@@ -134,7 +278,7 @@ async function get_plat(){
     `
 
     try{
-        const control = new AbortController() //Pour annuler la reuête en cas de fermeture du module
+        const control = new AbortController() //Pour annuler la requête en cas de fermeture du module
         const observer = new MutationObserver((mutations) => {
             mutations.forEach(mutation => {
                 if (mutation.attributeName == 'style'){
@@ -164,8 +308,11 @@ async function get_plat(){
 
         win_content.classList.remove('loading')
         win_content.innerHTML = ''
-
-        //Affichage du catalogue
+        data.forEach(each => {
+            win_content.appendChild(plat(...Object.values(each)))
+        })
+        
+        return
 
     } catch (err){
         //En cas d'échec d'envoi de la requête
