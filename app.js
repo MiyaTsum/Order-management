@@ -4,8 +4,9 @@ const express = require('express');
 const app = express();
 app.use(express.json());   // pour lire les données envoyées par le front
 
+app.use('/commande', require('./routes/commande'))
 app.use('/plat', require('./routes/plat'));
-app.use(require('./routes/interface.js'))
+app.use(require('./routes/interface'))
 
 app.listen(process.env.PORT || 3000, () => {
   console.log('Serveur démarré sur http://localhost:' + (process.env.PORT || 3000));

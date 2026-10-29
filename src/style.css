@@ -2,7 +2,7 @@
     --bg_doc: #e1e0ef;
     --bg_com: #f1f0ff;
     --them_col: #7672F1;
-    --attente: #71202f;
+    --en_cours: #71202f;
     --servie: #71702f;
     --payée: #21702f;
 }
@@ -53,10 +53,19 @@ body{
                     &.selected{
                         background-color: var(--them_col);
                         color: var(--bg_com);
+
+                        &:disabled{
+                            background-color: rgba(100, 100, 200, .5);
+                        }
                     }
                     &:not(.selected){
                         background-color: var(--bg_doc);
                         color: var(--them_col);
+
+                        &:disabled{
+                            color: rgba(0, 0, 0, .1);
+                            background-color: rgb(100, 100, 100, .1);
+                        }
                     }
                 }
             }
@@ -86,7 +95,6 @@ body{
                 padding: 1em 0 .63em .5em;
                 input{
                     padding: .2em .5em;
-                    background-color: transparent;
                     border: 2px solid var(--bg_doc);
                     border-radius: .5em;
                 }
@@ -108,17 +116,15 @@ body{
                 padding: .5em;
 
                 &.empty{
+                    flex: 1;
                     display: flex;
                     flex-direction: column;
                     justify-content: center;
                     align-items: center;
                     color: #00002f;
 
-                    & > *{
-                        transform: translateY(-2em);
-                    }
                     svg{
-                        margin-bottom: 1.5em;
+                        margin-bottom: .5em;
                     }
                     button{
                         padding: .5em 2em;
@@ -129,8 +135,19 @@ body{
                         font-weight: 600;
                         color: var(--bg_com);
                     }
+                    .noResult{
+                        position: absolute;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: .5em;
+                        transform: translateY(-1.5em);
+                    }
+                    .onError{
+                        display: none
+                    }
                 }
-                &:not(.empty){
+                &:not(.empty, .error){
                     display: flex;
                     flex-direction: column;
                     gap: .5em;
@@ -152,14 +169,32 @@ body{
                                 font-weight: 600;
                             }
                         }
+                        h3{
+                            margin-top: .5em;
+                        }
                         button{
                             position: absolute;
-                            top: 1em;
-                            bottom: 1em;
-                            right: 1em;
+                            top: .5em;
+                            right: .5em;
                             background-color: transparent;
                             border: none;
                         }
+                    }
+                    .noResult, .onError{
+                        display: none;
+                    }
+                }
+                &.error{
+                    .onError{
+                        position: absolute;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: .5em;
+                        transform: translateY(-1.5em);
+                    }
+                    .noResult{
+                        display: none;
                     }
                 }
             }
@@ -171,8 +206,8 @@ body{
         color: var(--bg_com);
         align-content: center;
         
-        &.attente{
-            background-color: var(--attente);
+        &.en_cours{
+            background-color: var(--en_cours);
         }
         &.servie{
             background-color: var(--servie);
@@ -263,18 +298,50 @@ body{
                     }
                 }
                 & > fieldset {
-                    margin: 0 1em;
+                    margin: 0 .75em;
                     padding: .5em 1em;
                     background-color: #efefff;
                     border: none;
                     border-radius: .5em;
 
                     &.plats{
-                        padding: .5em 2em;
+                        flex: 1;
+                        padding: .5em 1em;
+                        display: flex;
+                        flex-direction: column;
+                        gap: .2em;
+                        scrollbar-width: thin;
+                        scrollbar-color: rgba(100, 100, 100, .5) transparent;
+
                         p{
                             display: flex;
                             justify-content: space-between;
                         }
+                        &::-webkit-scrollbar{
+                            width: 20px;
+                        }
+                        &::-webkit-scrollbar-track{
+                            background-color: rgba(100, 100, 100, .5);
+                            border-radius: 1em;
+                        }
+                        &::-webkit-scrollbar-thumb{
+                            background-color: transparent;
+                        }
+                        &.erreur{
+                            align-items: center;
+                            justify-content: center;
+
+                            button{
+                                background-color: var(--them_col);
+                                color: var(--bg_doc);
+                                padding: .2em 1em;
+                                border-radius: 5em;
+                                border: 2px solid transparent;
+                            }
+                        }
+                    }
+                    &.bill{
+                        margin-bottom: 1em;
                     }
                 }
             }
@@ -375,11 +442,29 @@ body{
                         flex-direction: column;
                         align-items: center;
                         justify-content: center;
-
+                    }
+                    &.loading{
+                        .onLoading{
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        .onFailed{
+                            display: none;
+                        }
                     }
                     &.failed{
-                        gap: .5em;
-
+                        .onFailed{
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            gap: .5em;
+                        }
+                        .onLoading{
+                            display: none;
+                        }
                         svg{
                             margin-bottom: .5em;
                         }
@@ -483,6 +568,9 @@ body{
                                 }
                             }
                         }
+                        .onLoading, .onFailed{
+                            display: none;
+                        }
                         &::-webkit-scrollbar{
                             width: 10px;
                             height: 10px;
@@ -536,6 +624,59 @@ body{
                                     background-color: rgba(130, 130, 255, .5);
                                 }
                             }
+                        }
+                    }
+                }
+                &.done{
+                    align-items: center;
+                    justify-content: center;
+                    gap: .5em;
+
+                    &.loading{
+                        .onLoading{
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .onFailed{
+                            display: none;
+                        }
+                    }
+                    &.failed{
+                        .onFailed{
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            gap: .5em;
+
+                            svg{
+                                margin-bottom: .5em;
+                            }
+                            div{
+                                display: flex;
+                                gap: 1em;
+        
+                                button{
+                                    padding: .2em 1em;
+                                    font-weight: 600;
+                                    border: 2px solid transparent;
+                                    border-radius: .5em;
+        
+                                    &:first-child{
+                                        background-color: var(--bg_doc);
+                                        color: var(--them_col);
+                                    }
+                                    &:last-child{
+                                        background-color: var(--them_col);
+                                        color: var(--bg_doc);
+                                    }
+                                }
+                            }
+                        }
+                        .onLoading{
+                            display: none;
                         }
                     }
                 }
@@ -629,6 +770,7 @@ body{
                     width: 100%;
                     flex: 1;
                     overflow: auto;
+
                     &:not(.empty){
                         display: grid;
                         align-content: start;
@@ -659,9 +801,6 @@ body{
                         flex: 1;
                         overflow-y: auto;
                     }
-                    .bill{
-                        margin-bottom: 1em;
-                    }
                 }
                 &.catalogue{
                     height: 550px;
@@ -674,6 +813,10 @@ body{
                             grid-template-rows: repeat(auto, 1fr);
                             align-content: start;
                         }
+                    }
+                    &.done{
+                        justify-content: center;
+                        align-items: center;
                     }
                 }
             }

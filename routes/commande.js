@@ -1,6 +1,5 @@
 const express = require('express');
 const db = require('../config/db');
-const { repondreErreur, entierPositif } = require('../config/outils');
 const router = express.Router();
 
 
@@ -19,7 +18,7 @@ router.get('/', async (req, res) => {
     );
     res.json(lignes);
   } catch (erreur) {
-    repondreErreur(res, erreur);
+    res.status(500).json({ err: erreur.message})
   }
 });
 
@@ -27,7 +26,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const id = entierPositif(req.params.id);
+    const id = Number(req.params.id);
     if (!id) return res.status(400).json({ erreur: 'id invalide' });
 
     const [entetes] = await db.execute(
@@ -53,7 +52,7 @@ router.get('/:id', async (req, res) => {
     const total = lignes.reduce((somme, l) => somme + l.sous_total, 0);
     res.json({ ...entetes[0], lignes, total });
   } catch (erreur) {
-    repondreErreur(res, erreur);
+    res.status(500).json({ err: erreur.message})
   }
 });
 
@@ -62,19 +61,19 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const corps = req.body || {};
-  const idTable = entierPositif(corps.id_table);
+  const idTable = corps.id_table;
   if (!idTable) {
     return res.status(400).json({ erreur: 'id_table obligatoire' });
   }
 
-  const plats = corps.plats === undefined ? [] : corps.plats;
+  const plats = (corps.plats) ? corps.plats : [];
   if (!Array.isArray(plats)) {
     return res.status(400).json({ erreur: 'plats doit être une liste' });
   }
   const lignes = [];
   for (const p of plats) {
-    const idPlat = entierPositif(p && p.id_plat);
-    const quantite = entierPositif(p && p.quantite);
+    const idPlat = p?.id_plat;
+    const quantite = p?.quantite;
     if (!idPlat || !quantite) {
       return res.status(400).json({ erreur: 'chaque plat doit avoir id_plat et quantite' });
     }
@@ -89,12 +88,12 @@ router.post('/', async (req, res) => {
       'INSERT INTO commande (id_table) VALUES (?)',
       [idTable]
     );
-    const idCommande = resultat.insertId;
+    const idCommande = resultat.insertId
 
-    for (const [idPlat, quantite] of lignes) {
+    for (const com of lignes) {
       await connexion.execute(
         'INSERT INTO details_commande (id_commande, id_plat, quantite) VALUES (?, ?, ?)',
-        [idCommande, idPlat, quantite]
+        [idCommande, ...com]
       );
     }
 
@@ -102,8 +101,10 @@ router.post('/', async (req, res) => {
     res.status(201).json({ id_commande: idCommande });
   } catch (erreur) {
     await connexion.rollback();
-    repondreErreur(res, erreur);
+    res.status(500).json({ err: erreur.message});
   } finally {
     connexion.release();
   }
 });
+
+module.exports = router
