@@ -18,7 +18,8 @@ router.get('/', async (req, res) => {
     );
     res.json(lignes);
   } catch (erreur) {
-    res.status(500).json({ err: erreur.message})
+    console.log(erreur)
+    res.status(500).json({ err: 'Erreur de connexion au serveur'})
   }
 });
 
@@ -49,10 +50,11 @@ router.get('/:id', async (req, res) => {
       [id]
     );
 
-    const total = lignes.reduce((somme, l) => somme + l.sous_total, 0);
+    const total = lignes.reduce((somme, l) => somme + Number(l.sous_total), 0);
     res.json({ ...entetes[0], lignes, total });
   } catch (erreur) {
-    res.status(500).json({ err: erreur.message})
+    console.log(erreur)
+    res.status(500).json({ err: 'Erreur de connexion au serveur'})
   }
 });
 
@@ -112,7 +114,7 @@ router.post('/', async (req, res) => {
   } catch (erreur) {
     console.log(erreur)
     await connexion.rollback();
-    res.status(500).json({ err: erreur.message});
+    res.status(500).json({ err: 'Erreur de connexion au serveur'});
   } finally {
     connexion.release();
   }
@@ -139,7 +141,8 @@ router.delete('/:id', async (req, res) => {
   
     res.end()
   } catch(erreur){
-    res.status(500).json({ erreur: erreur.message})
+    console.log(erreur)
+    res.status(500).json({ erreur: 'Erreur de connexion au serveur'})
   }
 })
 
@@ -163,7 +166,7 @@ router.patch('/:id', async (req, res) => {
     )
     const { info } = resultat
 
-    if (!info.includes('Rows matched: 1')){
+    if (info.includes('Rows matched: 0')){
       res.status(404).json({ erreur: 'Aucune commande correspondante'})
       return
     }
@@ -171,7 +174,7 @@ router.patch('/:id', async (req, res) => {
     res.status(200).json({ success: 'Commande mise à jour' })
   } catch(erreur){
     console.log(erreur)
-    res.status(500).json({ erreur: erreur.message})
+    res.status(500).json({ erreur: 'Erreur de connexion à la base de données'})
   }
 })
 

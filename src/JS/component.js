@@ -20,7 +20,7 @@ export function art_commande(id, table, datetime, status, total){
 
     //Pour regarder les détails de la commande
     article.querySelector('button').addEventListener('click', () => {
-        show_details(id, table, datetime, article.dataset, total)
+        show_details(id, article.dataset, total)
     })
 
     return article

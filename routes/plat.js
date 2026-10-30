@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
     const [lignes] = await db.execute('SELECT * FROM plat');
     res.json(lignes);
   } catch (erreur) {
-    res.status(500).json({ erreur: erreur.message });
+    res.status(500).json({ erreur: 'Erreur de connexion au serveur' });
   }
 });
 

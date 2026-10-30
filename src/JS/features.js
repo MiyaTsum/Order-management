@@ -66,7 +66,7 @@ export async function create_commande(){
     </div>
     <div class="footer d-f jc-sb ai-c">
         <div class="inf">
-            <input type="number" min="1" ${!max ? 'disabled' : `max=${max}`} placeholder="num table">
+            <input type="number" min="1" ${!max ? 'disabled' : `max=${max} placeholder='Table 1-${max}'`} placeholder="num table">
         </div>
         <div class="control">
             <button class="cancel secondary_button">Annuler</button>
@@ -454,11 +454,12 @@ async function delete_commande(id){
     com_node.dataset.status = null
     observer.observe(com_node, { attributes: true })
     update_nav()
+    find_commande()
 
     notif.querySelector('button').addEventListener('click', undo)
 }
 
-export async function show_details(id, table, datetime, ds, total){
+export async function show_details(id, ds, total){
     const win = modal.querySelector('article')
     
     modal.style.display = 'flex'
@@ -502,6 +503,10 @@ export async function show_details(id, table, datetime, ds, total){
             const result = await patch_commande(id, value)
             let current_com = null
 
+            if (!result.success){
+                target.value = ds.status
+                return
+            }
             for (const com of Array.from(commandes_liste.querySelectorAll('.commandes'))){
                 if (Number(com.dataset.id) === id){
                     current_com = com
@@ -510,10 +515,6 @@ export async function show_details(id, table, datetime, ds, total){
             }
             const label = current_com.querySelector('.status')
             
-            if (!result.success){
-                target.value = ds.status
-                return
-            }
 
             label.classList.replace(ds.status, value === "en cours" ? 'en_cours' : value)
             label.textContent = value
@@ -529,7 +530,50 @@ export async function show_details(id, table, datetime, ds, total){
         win.innerHTML = ''
         win.classList.remove('details_commande', 'd-f', 'fd-cl')
     })
-    get_details(id)
+
+    const details = await get_details(id)
+    const lignes = details?.lignes
+
+    if (lignes && lignes.length){
+        const plat_liste = win.querySelector('.plats')
+        for (const { id_detail, nom_plat, quantite, sous_total } of lignes){
+            plat_liste.appendChild(plat_commandé(id_detail, nom_plat, quantite, sous_total))
+        }
+        win.querySelector('.footer h3 span:last-child').textContent = `$${String(details.total).padEnd(4, '0')}`
+    }
+
+    win.querySelectorAll('.plat_commandé')
+        .forEach(each => {
+            const { id_detail } = each.dataset
+            each.querySelector('div button').addEventListener('click', async () => {
+                const result = await delete_details(id_detail)
+
+                if (result.erreur){
+                    console.log(result.erreur)
+                    return
+                }
+
+                each.remove()
+                const details = await get_details(id)
+                const lignes = details?.lignes
+
+                if (!lignes.length){
+                    for (const com of commandes_liste.querySelectorAll('.commandes')){
+                        if (Number(com.dataset.id) == id){
+                            com.remove()
+                            break
+                        }
+                    }
+                    await fetch(`/commande/${id}`, { method: 'DELETE' })
+                    await update_nav()
+                    await find_commande()
+
+                    modal.style.display = 'none'
+                    win.classList.remove('details_commande', 'd-f', 'fd-cl')
+                    win.innerHTML = ''
+                }
+            })
+        })
 }
 
 async function get_details(id){
@@ -558,11 +602,9 @@ async function get_details(id){
                         })
             return
         }
+        const data = await response.json()
 
-        const {lignes} = await response.json()
-        for (const { id_detail, nom_plat, quantite, sous_total } of lignes){
-            plat_liste.appendChild(plat_commandé(id_detail, nom_plat, quantite, sous_total))
-        }
+        return data
 
     } catch (err){
         plat_liste.classList.add('erreur', 'jc-c', 'ai-c')
@@ -595,6 +637,17 @@ async function patch_commande(id, status){
             },
             body: JSON.stringify({ status: status })
         })
+        const result = await response.json()
+
+        return result
+    } catch(err){
+        console.log(err)
+        return { erreur: 'Erreur de connexion serveur'}
+    }
+}
+async function delete_details(id_detail){
+    try{
+        const response = await fetch(`/details/${id_detail}`, { method: 'DELETE' })
         const result = await response.json()
 
         return result
