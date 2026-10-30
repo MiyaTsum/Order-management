@@ -58,12 +58,11 @@ router.get('/:id', async (req, res) => {
 
 
 // post commande
-
 router.post('/', async (req, res) => {
   const corps = req.body || {};
-  const idTable = corps.id_table;
-  if (!idTable) {
-    return res.status(400).json({ erreur: 'id_table obligatoire' });
+  const numTable = corps.num_table;
+  if (!numTable) {
+    return res.status(400).json({ erreur: 'num_table obligatoire' });
   }
 
   const plats = (corps.plats) ? corps.plats : [];
@@ -84,6 +83,17 @@ router.post('/', async (req, res) => {
   try {
     await connexion.beginTransaction();
 
+    const [resultTable] = await connexion.execute(
+      'SELECT * FROM tble WHERE num_table = ?',
+      [numTable]
+    )
+
+    if (!resultTable?.length){
+      res.status(404).json({ erreur: 'num_table non existant'})
+      return
+    }
+
+    const [{ id_table: idTable }] = resultTable
     const [resultat] = await connexion.execute(
       'INSERT INTO commande (id_table) VALUES (?)',
       [idTable]
@@ -100,11 +110,69 @@ router.post('/', async (req, res) => {
     await connexion.commit();
     res.status(201).json({ id_commande: idCommande });
   } catch (erreur) {
+    console.log(erreur)
     await connexion.rollback();
     res.status(500).json({ err: erreur.message});
   } finally {
     connexion.release();
   }
 });
+
+router.delete('/:id', async (req, res) => {
+  try{
+    const id = Number(req.params.id);
+    if (!id){
+      res.status(400).json({ erreur: 'id invalide' })
+      return
+    }
+  
+    const [resultat] = await db.execute(
+      `DELETE FROM commande
+      WHERE id_commande = ?`,
+      [ id ]
+    )
+  
+    if (!resultat.affectedRows){
+      res.status(404).json({ erreur: 'commande introuvable ' })
+      return
+    }
+  
+    res.end()
+  } catch(erreur){
+    res.status(500).json({ erreur: erreur.message})
+  }
+})
+
+router.patch('/:id', async (req, res) => {
+  const id = Number(req.params.id)
+  if (!id || id <= 0 || id != parseInt(id)){
+    res.status(400).json({ erreur: 'id invalide (doit être non nul, positif et entier)'})
+    return
+  }
+
+  const { status } = req.body
+  if (!status || !['en cours', 'servie', 'payée'].includes(status)){
+    res.status(400).json({ erreur: 'Le facteur de mise à jour (status) doit être donnée et parmis les cas suivant: en cours, servie ou payée'})
+    return
+  }
+
+  try{
+    const [resultat] = await db.execute(
+      'UPDATE commande SET statut = ? WHERE id_commande = ?',
+      [ status, id ]
+    )
+    const { info } = resultat
+
+    if (!info.includes('Rows matched: 1')){
+      res.status(404).json({ erreur: 'Aucune commande correspondante'})
+      return
+    }
+
+    res.status(200).json({ success: 'Commande mise à jour' })
+  } catch(erreur){
+    console.log(erreur)
+    res.status(500).json({ erreur: erreur.message})
+  }
+})
 
 module.exports = router
