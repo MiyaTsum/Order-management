@@ -26,10 +26,11 @@ router.get('/', async (req, res) => {
 // facture d'une commande
 
 router.get('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id || !isFinite(id) || id <= 0 || id != parseInt(id)){
+    return res.status(400).json({ erreur: 'id invalide (doit être un nombre non nul, fini, positif et entier' });
+  }
   try {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ erreur: 'id invalide' });
-
     const [entetes] = await db.execute(
       `SELECT c.id_commande, t.num_table, c.date_commande, c.statut
        FROM commande c
@@ -128,13 +129,13 @@ router.post('/', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id || !isFinite(id) || id <= 0 || id != parseInt(id)){
+    res.status(400).json({ erreur: 'id invalide (doit être un nombre non nul, fini, positif et entier' })
+    return
+  }
+
   try{
-    const id = Number(req.params.id);
-    if (!id){
-      res.status(400).json({ erreur: 'id invalide' })
-      return
-    }
-  
     const [resultat] = await db.execute(
       `DELETE FROM commande
       WHERE id_commande = ?`,

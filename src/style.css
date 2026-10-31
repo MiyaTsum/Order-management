@@ -79,7 +79,7 @@ body{
                 font-weight: 900;
             }
         }
-        div{
+        & > section{
             flex-grow: 1;
 
             #search{
@@ -113,6 +113,7 @@ body{
                     background-color: rgba(100, 75, 250, .1);
                     padding: .5em 1em;
                     border-radius: .5em;
+                    transition: transform .2s ease-in-out, box-shadow .2s ease-in-out;
     
                     p:first-child{
                         margin-bottom: .5em;
@@ -132,6 +133,10 @@ body{
                         right: .5em;
                         background-color: transparent;
                         border: none;
+                    }
+                    &:hover{
+                        transform: translateY(-5px);
+                        box-shadow: 0 5px rgba(0, 0, 0, .1);
                     }
                 }
                 .noResult, .onError{
@@ -727,7 +732,7 @@ body{
                     flex-direction: column;
                 }
             }
-            div{
+            section{
                 flex-grow: unset;
                 grid-area: div;
                 position: relative;
@@ -834,7 +839,7 @@ body{
 @media (min-width: 1024px){
     body{
         main{
-            div{
+            section{
                 #liste{
                     &:not(.empty){
                         grid-template-columns: repeat(3, 1fr);

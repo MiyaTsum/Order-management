@@ -1,40 +1,72 @@
 import { art_commande, plat, plat_commandé } from "./component.js"
 
-let filtre = 'total'
+let filtre = 'total' //Stockage de la condition de filtrage ('total', 'en_cours', 'servie', 'payée')
 
 const commandes_liste = document.querySelector('#liste')
 const modal = document.querySelector('#modal')
 
-//Application du filtre
+//Modification de la condition de filtrage et mise à jour des états des bouttons
 export function handleFilter(e){
     const { currentTarget: target } = e
     const { id } = target
     filtre = id
 
     document.querySelectorAll('header nav button')
-                    .forEach(each => {
-                        const isTarget = each == target
-                        const classes = isTarget ? ["secondary_button", "main_button"] : ["main_button", "secondary_button"]
-                        each.classList[isTarget ? 'add' : 'remove']('selected')
-                        each.classList.replace(...classes)
-                    })
+            .forEach(each => {
+                const isTarget = each == target
+                const classes = isTarget ? ["secondary_button", "main_button"] : ["main_button", "secondary_button"]
+                each.classList[isTarget ? 'add' : 'remove']('selected')
+                each.classList.replace(...classes)
+            })
     find_commande()
 }
 
-//Création d'un commande
+//Filtrage des commandes
+export async function find_commande(){
+    const { value } = document.querySelector('#search input') //Condition de recherche (ID)
+    const commandes = commandes_liste.querySelectorAll('.commandes')
+    
+    commandes.forEach(each => {
+        const { dataset } = each
+
+        if (dataset.status == 'null'){
+            each.style.display = 'none'
+            return
+        }
+
+        //Filtrage en fonction de la condition de recherche par le filtre
+        const filtrageParStatus = (filtre == 'total') ? 'block' : ((filtre == dataset.status) ? 'block' : 'none')
+
+        //Filtrage en fonction de la condition de recherche par ID
+        const filtrageParId = (!value || `${dataset.id}`.startsWith(value)) ? (filtrageParStatus) : 'none'
+        each.style.display = filtrageParId
+    })
+
+    //Vérification en cas d'absence de correspondance
+    const empty = Array.from(commandes).every(each => getComputedStyle(each).display == 'none')
+    commandes_liste.classList[empty ? 'add' : 'remove']('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
+}
+
+//Ouverture du catalogue et création d'une commande
 export async function create_commande(){
     const win = modal.querySelector('article')
+
+    //Fonction de fermeture du module
     const cancel = () => {
         win.innerHTML = ''
         win.classList.remove('catalogue', 'd-f', 'fd-cl')
         modal.style.display = 'none'
     }
-    const table = await get_table()
-    const max = table.length ? table.reduce((num_max, { num_table }) => num_max < num_table ? num_table : num_max, 0) : null
-    let previous_value = ''
-    let categorie = 'entrée'
-    let new_com = [] //Pour stocker les plats sélectionnés et leur informations relatives
 
+    //Récupération de la liste des tables et définition du numéro de table maximale séléctionnables
+    const table = await get_table() 
+    const max = table.length ? table.reduce((num_max, { num_table }) => num_max < num_table ? num_table : num_max, 0) : null
+
+    let previous_value = '' //Numéro de table (contrôle des saisies des utilisateurs)
+    let categorie = 'entrée' //Condition de filtrage par catégorie (added, entrée, plat principal ou dessert)
+    let new_com = [] //Stockage les plats sélectionnés et leur informations relatives
+
+    //Ouverture du module et définition du contenu
     modal.style.display = 'flex'
     win.classList.add('catalogue', 'd-f', 'fd-cl')
     win.innerHTML = `
@@ -80,24 +112,24 @@ export async function create_commande(){
     const btn_confirm = win.querySelector('.footer .control .confirm')
     const num_table = win.querySelector('.footer .inf input')
 
-    //Annulation de la création de la commande
+    //Fermeture et annulation de la création de la commande
     win.querySelectorAll('.header .head .exit, .footer .control .cancel')
         .forEach(each => {
             each.addEventListener('click', cancel)
         })
 
-    //Gestion et filtrage des plats par catégorie
+    //Filtrage des plats par catégorie
     btn_nav.forEach(each => {
             each.addEventListener('click', () => {
                 for (let btn of btn_nav){
                     btn.classList[btn == each ? 'add' : 'remove']('selected')
                 }
-                categorie = each.dataset.categorie
+                categorie = each.dataset.categorie //Modification de la condition de filtrage
                 filterCatalogue(categorie)
             })
     })
 
-    //Selection du numéro de table
+    //Selection du numéro de table et gestion des saisie utilisateurs
     num_table.addEventListener('input', (e) => {
         const { currentTarget: target } = e
         const { value } = target
@@ -116,32 +148,36 @@ export async function create_commande(){
 
     //Lister les plats selectionnés
     btn_details.addEventListener('click', () => {
-            filterCatalogue('added')
+            categorie = 'added'
+            filterCatalogue(categorie)
             btn_nav.forEach(each => each.classList.remove('selected'))
         })
 
+    //Récupération et affichage du catalogue
     const refresh = async () => {
-        await get_plat(refresh)
+        await get_plat()
         await filterCatalogue(categorie)
 
+        //Ajout des fonctionnalités de choix des plats
         win.querySelectorAll('.main .plat')
             .forEach(each => {
                 const quantite = each.querySelector('.control .quantite input')
                 const id = parseInt(each.dataset.id)
 
+                //Modification de la quantite voulue du plat
                 const change_value = (e) => {
-                    const { target } = e
-                    const { value } = target
+                        const { target } = e
+                        const { value } = target
 
-                    if (value !== ''){
-                        new_com = new_com.map(plat => {
-                            const { id_plat } = plat
-                        
-                            return id_plat === id ? {...plat, quantite: parseInt(value)} : plat
-                        })
-                    }
+                        if (value !== ''){
+                            new_com = new_com.map(plat => {
+                                const { id_plat } = plat
+                            
+                                return id_plat === id ? {...plat, quantite: parseInt(value)} : plat
+                            })
                         }
-                        const handleBlur = (e) => {
+                    }
+                const handleBlur = (e) => {
                     const { target } = e
                     const { value } = target
                         
@@ -149,6 +185,8 @@ export async function create_commande(){
                         target.value = new_com.filter(({ id_plat }) => id_plat === id)[0].quantite
                     }
                 }
+
+                //Ajout du plat dans la liste new_com
                 const handleAdd = () => {
                     each.classList.add('added')
 
@@ -157,9 +195,11 @@ export async function create_commande(){
                     quantite.addEventListener('blur', handleBlur)
 
                     new_com.push({ id_plat: id, quantite: 1 })
-                    btn_confirm.disabled = !num_table.value || Number(num_table.value) <= 0|| !new_com.length
+                    btn_confirm.disabled = !num_table.value || Number(num_table.value) <= 0 || !new_com.length
                     btn_details.disabled = !new_com.length
                 }
+
+                //Retrait du plat dans la liste new_com
                 const handleRemove = () => {
                     each.classList.remove('added')
                         
@@ -167,15 +207,17 @@ export async function create_commande(){
                     quantite.removeEventListener('blur', handleBlur)
                         
                     new_com = new_com.filter(({ id_plat: ID }) => ID != id)
-                    btn_confirm.disabled = !num_table.value || !new_com.length
+                    btn_confirm.disabled = !num_table.value || Number(num_table.value) <= 0 || !new_com.length
                     btn_details.disabled = !new_com.length
                         
-                    for (let btn of btn_nav) if (btn.classList.contains('selected')) return
+                    if (categorie != 'added') return
                         
+                    //En cas de suppression lors de l'affichage de la liste des plats séléctionnés
                     filterCatalogue('added')
-                        
+                    //Liste des plats seléctionnés vides
                     if (!new_com.length){
                         btn_nav[0].classList.add('selected')
+                        categorie = 'entrée'
                         filterCatalogue('entrée')
                     }
                 }
@@ -188,56 +230,32 @@ export async function create_commande(){
 
     refresh()
 
+    //En cas d'échec du chargement du catalogue
     win.querySelector('.main .onFailed')
         .addEventListener('click', refresh)
 }
 
-//Récupération du catalogue de plat à partir de l'API
-async function get_plat(){
-    const win = modal.querySelector('article .main')
-
-    if (win.classList.contains('failed')) win.classList.remove('failed')
-    win.classList.add('loading', 'ai-c', 'jc-c')
-
+//Récupération de la liste des tables séléctionnable
+async function get_table(){
     try{
-        const control = new AbortController() //Pour annuler la requête en cas de fermeture du module
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                if (mutation.attributeName == 'style'){
-                    const isClose = getComputedStyle(modal).display == 'none'
+        const response = await fetch('/table')
+        const result = await response.json()
 
-                    if (isClose) control.abort()
-                }
-            })
-        })
-        const response = await fetch(`http://${location.host}/plat`, { signal: control.signal })
-
-        observer.observe(modal, { attributes: true })
-        
         if (!response.ok){
-            //Dans le cas d'une erreur côté serveur ou client
-            win.classList.replace('loading', 'failed')
-            win.querySelector('.onFailed h3').textContent = 'Erreur de chargement du catalogue'
-            return
+            //Dans le cas d'une erreur client ou serveur (erreur 400 ou 500)
+            console.log(result.erreur)
+            return []
         }
 
-        const data = await response.json()
-
-        win.classList.remove('loading', 'ai-c', 'jc-c')
-        data.forEach(each => {
-            win.appendChild(plat(...Object.values(each)))
-        })
-        
-        return
-
-    } catch (err){
+        return result
+    } catch(err){
         //En cas d'échec d'envoi de la requête
-        win.classList.replace('loading', 'failed')
-        win.querySelector('.onFailed h3').textContent = 'Erreur de chargement du catalogue'
-        return
+        console.log(err)
+        return []
     }
 }
 
+//Gestion du filtrage des plats du catalogue
 async function filterCatalogue(categorie){
     const win = modal.querySelector('article .main')
     const plats = win.querySelectorAll('.plat')
@@ -249,9 +267,11 @@ async function filterCatalogue(categorie){
     return
 }
 
+//Confirmation de la création de la commande
 async function post_commande(commande){
     const win = modal.querySelector('article')
 
+    // Modification du contenu du module
     if (!win.classList.contains('done')) win.classList.add('done', 'ai-c', 'jc-c')
     win.classList.add('loading')
     win.innerHTML = `
@@ -269,12 +289,16 @@ async function post_commande(commande){
         </div>
     `
 
+    // En cas d'échec et annulation de l'envoi de la commande
     win.querySelector('.onFailed button:first-child')
         .addEventListener('click', () => {
+            // Fermeture du module
             win.classList.remove('done', 'failed', 'catalogue', 'ai-c', 'jc-c')
             win.innerHTML = ''
             modal.style.display = 'none'
         })
+
+    // Tentative d'envoi de la commande après echec
     win.querySelector('.onFailed button:last-child')
         .addEventListener('click', () => {
             win.classList.remove('failed')
@@ -282,7 +306,7 @@ async function post_commande(commande){
         })
     
     try{
-        const response = await fetch(`http://${location.host}/commande`, {
+        const response = await fetch('/commande', {
             method: 'POST',
             headers: {
                 'content-type': 'application/json'
@@ -297,12 +321,12 @@ async function post_commande(commande){
             return
         }
 
+        // Fermeture du module et mise à jour de la liste des commandes
         win.classList.remove('done', 'catalogue', 'ai-c', 'jc-c')
         win.innerHTML = ''
         modal.style.display = 'none'
-        get_commandes()
+        await get_commandes()
         return
-
     } catch (err){
         win.classList.replace('loading', 'failed')
         win.querySelector('.onFailed h3').textContent = 'Erreur de connexion au serveur'
@@ -311,8 +335,9 @@ async function post_commande(commande){
     }
 }
 
+// Récupération de la liste des commandes
 export async function get_commandes(){
-    const commandes_chargées = {}
+    const commandes_chargées = {} // Table de vérité des commandes déjà chargées
     commandes_liste.querySelectorAll('.commandes')
                     .forEach(each => {
                         commandes_chargées[each.dataset.id] = true
@@ -320,7 +345,7 @@ export async function get_commandes(){
     
     commandes_liste.classList.remove('error', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
     try{
-        const response = await fetch(`http://${location.host}/commande`)
+        const response = await fetch('/commande')
 
         if (!response.ok){
             commandes_liste.classList.add('error', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
@@ -331,8 +356,10 @@ export async function get_commandes(){
         const data = await response.json()
         const { length } = data
         
+        // Eviter le cas d'une liste vide
         if (length){
             data.forEach((each) => {
+                // Ajout dans la liste si la commande n'est pas encore déjà chargée et affichée
                 if (!commandes_chargées[each.id_commande]) commandes_liste.appendChild(art_commande(...Object.values(each)))
             })
         }
@@ -348,6 +375,7 @@ export async function get_commandes(){
     }
 }
 
+// Mise à jour des bouttons de navigation
 async function update_nav(){
     const liste = commandes_liste.querySelectorAll('.commandes')
     let length = 0
@@ -371,95 +399,61 @@ async function update_nav(){
     document.querySelector('#servie span:last-child').innerHTML = `(${servie})`
     document.querySelector('#payée span:last-child').innerHTML = `(${payée})`
     document.querySelector('#total span:last-child').innerHTML = `(${length})`
-    document.querySelectorAll('header nav button')
-            .forEach(each => {
+    document.querySelector('#search input').disabled = !length
+    document.querySelectorAll('header nav button').forEach(each => {
                 each.disabled = !length
             })
-    document.querySelector('#search input')
-            .disabled = !length
 
     return
 }
 
-export async function find_commande(){
-    const { value } = document.querySelector('#search input')
-    const commandes = commandes_liste.querySelectorAll('.commandes')
-    
-    commandes.forEach(each => {
-        const { dataset } = each
+//Récupération du catalogue de plat
+async function get_plat(){
+    const win = modal.querySelector('article .main')
 
-        if (dataset.status == 'null'){
-            each.style.display = 'none'
+    if (win.classList.contains('failed')) win.classList.remove('failed')
+    win.classList.add('loading', 'ai-c', 'jc-c')
+
+    try{
+        const control = new AbortController() //Pour annuler la requête en cas de fermeture du module lors de l'envoie de la requête
+        const observer = new MutationObserver(([mutation]) => {
+            if (mutation.attributeName == 'style'){
+                const isClose = getComputedStyle(modal).display == 'none'
+
+                if (isClose) control.abort()
+            }
+        }) // Observation et vérification de la fermeture du module à chaque mutation de style
+        const response = await fetch(`http://${location.host}/plat`, { signal: control.signal })
+
+        observer.observe(modal, { attributes: true }) // Activation de l'observateur
+        
+        if (!response.ok){
+            win.classList.replace('loading', 'failed')
+            win.querySelector('.onFailed h3').textContent = 'Erreur de chargement du catalogue'
             return
         }
 
-        const filtrageParStatus = (filtre == 'total') ? 'block' : ((filtre == dataset.status) ? 'block' : 'none')
-        const filtrageParId = (!value || `${dataset.id}`.startsWith(value)) ? (filtrageParStatus) : 'none'
-        each.style.display = filtrageParId
-    })
-    commandes_liste.classList[(Array.from(commandes).every(each => getComputedStyle(each).display == 'none')) ? 'add' : 'remove']('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
+        //Ajout des plats dans le catalogue
+        const data = await response.json()
+        win.classList.remove('loading', 'ai-c', 'jc-c')
+        data.forEach(each => {
+            win.appendChild(plat(...Object.values(each)))
+        })
+        
+        return
+
+    } catch (err){
+        win.classList.replace('loading', 'failed')
+        win.querySelector('.onFailed h3').textContent = 'Erreur de chargement du catalogue'
+        return
+    }
 }
 
-async function delete_commande(id){
-    let com_node = null
-    let com_status = null
-    const notif = document.createElement('div')
-    const undo = () => {
-        clearTimeout(delay)
-        notif.remove()
-        com_node.dataset.status = com_status
-        update_nav()
-        find_commande()
-    }
-    const permDel = () => {
-        notif.remove()
-        com_node.remove()
-    }
-    const delay = setTimeout(async () => {
-        try{
-            const response =  await fetch(`/commande/${id}`, { method: 'DELETE' })
-
-            if (!response.ok){
-                undo()
-                console.log((await response.json()).erreur)
-                return
-            }
-
-            permDel()
-        } catch(err){
-            undo()
-            console.log(err)
-        }
-    }, 10000)
-
-    notif.classList.add('popup')
-    notif.innerHTML = `
-            <p>Commande supprimée</p>
-            <button id="undo" class="main_button">
-                <span>Annuler</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none"><path d="M7.12988 18.3101H15.1299C17.8899 18.3101 20.1299 16.0701 20.1299 13.3101C20.1299 10.5501 17.8899 8.31006 15.1299 8.31006H4.12988" stroke="#f1f0ff" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.43012 10.8099L3.87012 8.24994L6.43012 5.68994" stroke="#f1f0ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-    `
-    popup.appendChild(notif)
-    
-    for (const com of (commandes_liste.querySelectorAll('.commandes'))){
-        if (com.dataset.id == id){
-            com_node = com
-            com_status = com.dataset.status
-            com_node.dataset.status = null
-            break
-        }
-    }
-    
-    await update_nav()
-    await find_commande()
-
-    notif.querySelector('button').addEventListener('click', undo)
-}
-
-export async function show_details(id, ds, total){
+// Affichage des détails de la commannde et gestion des mises à jour et suppression
+export async function show_details(id, dataset, total){
     const win = modal.querySelector('article')
     
+    // Ouverture du module
     modal.style.display = 'flex'
     win.classList.add('details_commande', 'd-f', 'fd-cl')
     win.innerHTML = `
@@ -469,9 +463,9 @@ export async function show_details(id, ds, total){
             </button>
             <h3>Details</h3>
             <select name="status">
-                <option value="en cours" ${ds.status == 'en_cours' ? 'selected' : ''}>En cours</option>
-                <option value="servie" ${ds.status == 'servie' ? 'selected' : ''}>Servie</option>
-                <option value="payée" ${ds.status == 'payée' ? 'selected' : ''}>Payée</option>
+                <option value="en cours" ${dataset.status == 'en_cours' ? 'selected' : ''}>En cours</option>
+                <option value="servie" ${dataset.status == 'servie' ? 'selected' : ''}>Servie</option>
+                <option value="payée" ${dataset.status == 'payée' ? 'selected' : ''}>Payée</option>
             </select>
         </div>
         <fieldset class="plats d-f fd-cl">
@@ -487,6 +481,8 @@ export async function show_details(id, ds, total){
             <button class="main_button">Supprimer</button>
         </div>
     `
+
+    // Fermeture du module
     win.querySelector('.exit')
         .addEventListener('click', () => {
                 modal.style.display = 'none'
@@ -494,17 +490,21 @@ export async function show_details(id, ds, total){
                 win.innerHTML = ''
         })
 
+    // Gestion des modifications de statut 
     win.querySelector('.head select')
         .addEventListener('change', async (e) => {
             const { currentTarget: target } = e
             const { value } = target
-            const result = await patch_commande(id, value)
+            const result = await patch_commande(id, value) // Resultat de mise à jour de la commande
             let current_com = null
 
+            // En cas d'échec
             if (!result.success){
-                target.value = ds.status
+                target.value = dataset.status // Remise à la valeur initiale du statut de la commande
                 return
             }
+
+            // Mise à jour de l'affichage de la commande dans la liste et de son dataset
             for (const com of Array.from(commandes_liste.querySelectorAll('.commandes'))){
                 if (Number(com.dataset.id) === id){
                     current_com = com
@@ -512,16 +512,15 @@ export async function show_details(id, ds, total){
                 }
             }
             const label = current_com.querySelector('.status')
-            
-
-            label.classList.replace(ds.status, value === "en cours" ? 'en_cours' : value)
+            label.classList.replace(dataset.status, value === "en cours" ? 'en_cours' : value)
             label.textContent = value
             current_com.dataset.status = value === 'en cours' ? 'en_cours' : value
 
             await update_nav()
             await find_commande()
         })
-    //Lors de la suppression de la commande
+
+    // Gestion de la suppression de la commande
     win.querySelector('.footer button:last-child').addEventListener('click', () => {
         delete_commande(id)
         modal.style.display = 'none'
@@ -532,19 +531,25 @@ export async function show_details(id, ds, total){
     const details = await get_details(id)
     const lignes = details?.lignes
 
-    if (lignes && lignes.length){
+    // En cas de retour d'une liste non vide
+    if (lignes && Array.isArray(lignes) && lignes.length){
         const plat_liste = win.querySelector('.plats')
+
+        // Ajout des plats commandés
         for (const { id_detail, prix, nom_plat, quantite, sous_total } of lignes){
             plat_liste.appendChild(plat_commandé(id_detail, prix, nom_plat, quantite, sous_total))
         }
         win.querySelector('.footer h3 span:last-child').textContent = `$${Number(details.total)}`
     }
 
+
+    //Gestion de modification et suppression des plats commandés
     win.querySelectorAll('.plat_commandé')
         .forEach(each => {
             const { id_detail } = each.dataset
             const [ supp, edit ] = each.querySelectorAll('.control button')
 
+            // Suppresion du plat dans les détails
             supp.addEventListener('click', async () => {
                 const result = await delete_details(id_detail, id)
 
@@ -553,9 +558,11 @@ export async function show_details(id, ds, total){
                     return
                 }
 
+                // Retrait du plat de l'affichage
                 each.remove()
 
                 if (result.success == 'plat commandé supprimé'){
+                    //Calcul du prix total
                     const pTotal =
                         Array.from(win.querySelectorAll('.plat_commandé')).reduce((total, { dataset }) => {
                             const { quantite, prix } = dataset
@@ -563,6 +570,7 @@ export async function show_details(id, ds, total){
                             return (Number(quantite) * Number(prix)) + total
                         }, 0)
 
+                    // Mise à jour de l'affichage des détails du module (prix total) et de la commande correspondant dans la liste
                     win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal)}`
                     for (const com of commandes_liste.querySelectorAll('.commandes')){
                         if (Number(com.dataset.id) == id){
@@ -573,8 +581,10 @@ export async function show_details(id, ds, total){
                     return
                 }
 
+                // En cas où il n'y a plus de plat dans la liste des plats commandés
                 for (const com of commandes_liste.querySelectorAll('.commandes')){
                     if (Number(com.dataset.id) == id){
+                        // Retrait de la commande de l'affichage
                         com.remove()
                         break
                     }
@@ -595,6 +605,7 @@ export async function show_details(id, ds, total){
                 quantite.focus()
                 quantite.value = each.dataset.quantite
 
+                // Gestion des saisies utilsateurs
                 quantite.addEventListener('input', (e) => {
                     const { currentTarget: target } = e
                     const value = Number(target.value)
@@ -608,20 +619,24 @@ export async function show_details(id, ds, total){
 
                     previous_value = String(value)
                 })
+
+                // Confirmation des modifications à appliquer
                 confrm.addEventListener('click', async () => {
                     const result = await patch_detail(each.dataset.id_detail, Number(quantite.value))
 
                     if (result.erreur){
                         console.log(result.erreur)
                     } else {
-                        const inf = each.querySelector('p span:first-child')
+                        const inf = each.querySelector('p span:first-child') // Nom_plat et quantite du plat
                         const [nom_plat] = inf.textContent.split('*')
-                        const sous_total = each.querySelector('p span:last-child')
+                        const sous_total = each.querySelector('p span:last-child') // Sous-total du plat
     
+                        // Mise à jour du dataset et des affichages (prix et quantite) des details et commandes
                         each.dataset.quantite = quantite.value
                         inf.textContent = nom_plat + '*' + ` ${quantite.value}`
                         sous_total.textContent = `$${Number(each.dataset.prix) * Number(each.dataset.quantite)}`
     
+                        // Calcul du nouveau prix total
                         const pTotal = 
                                 Array.from(win.querySelectorAll('.plat_commandé')).reduce((total, { dataset }) => {
                                     const { quantite, prix } = dataset
@@ -629,7 +644,6 @@ export async function show_details(id, ds, total){
                                     return (Number(quantite) * Number(prix)) + total
                                 }, 0)
                         win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal)}`
-
                         for (const com of commandes_liste.querySelectorAll('.commandes')){
                             if (Number(com.dataset.id) == id){
                                 com.querySelector('h3').textContent = `Total: $${pTotal}`
@@ -640,6 +654,8 @@ export async function show_details(id, ds, total){
 
                     each.classList.remove('inEditing')
                 })
+
+                // Arrêt de la modification des details du plat
                 cancl.addEventListener('click', function(e){
                     each.classList.remove('inEditing')
                     e.currentTarget.removeEventListener('click', this)
@@ -656,6 +672,97 @@ export async function show_details(id, ds, total){
         })
 }
 
+// Mise à jour du status de la commande
+async function patch_commande(id, status){
+    try{
+        const response = await fetch(`/commande/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({ status: status })
+        })
+        const result = await response.json()
+
+        return result
+    } catch(err){
+        console.log(err)
+        return { erreur: 'Erreur de connexion serveur'}
+    }
+}
+
+//Suppression de commande
+async function delete_commande(id){
+    const notif = document.createElement('div')
+
+    // Back up en cas d'annulation 
+    let com_node = null
+    let com_status = null
+
+    // Annulation de suppression
+    const undo = () => {
+        clearTimeout(delay)
+        notif.remove()
+        com_node.dataset.status = com_status
+        update_nav()
+        find_commande()
+    }
+
+    //Suppresion définitive
+    const permDel = () => {
+        notif.remove()
+        com_node.remove()
+    }
+
+    // Retardement de l'envoi de la requête de suppression
+    const delay = setTimeout(async () => {
+        try{
+            const response =  await fetch(`/commande/${id}`, { method: 'DELETE' })
+            const result = await response.json()
+
+            if (!response.ok){
+                undo()
+                console.log(result.erreur)
+                return
+            }
+
+            console.log(result.success)
+            permDel()
+        } catch(err){
+            undo()
+            console.log(err)
+        }
+    }, 10000)
+
+    // Affichage de la notification
+    notif.classList.add('popup')
+    notif.innerHTML = `
+            <p>Commande supprimée</p>
+            <button id="undo" class="main_button">
+                <span>Annuler</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none"><path d="M7.12988 18.3101H15.1299C17.8899 18.3101 20.1299 16.0701 20.1299 13.3101C20.1299 10.5501 17.8899 8.31006 15.1299 8.31006H4.12988" stroke="#f1f0ff" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.43012 10.8099L3.87012 8.24994L6.43012 5.68994" stroke="#f1f0ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+    `
+    popup.appendChild(notif)
+    
+    // Recherche de la commande correspondante
+    for (const com of (commandes_liste.querySelectorAll('.commandes'))){
+        if (com.dataset.id == id){
+            com_node = com
+            com_status = com.dataset.status
+            com_node.dataset.status = null
+            break
+        }
+    }
+    
+    await update_nav()
+    await find_commande()
+
+    notif.querySelector('button').addEventListener('click', undo)
+}
+
+
+// Récupération des details d'une commande
 async function get_details(id){
     const plat_liste = modal.querySelector('article .plats')
 
@@ -685,7 +792,6 @@ async function get_details(id){
         const data = await response.json()
 
         return data
-
     } catch (err){
         plat_liste.classList.add('erreur', 'jc-c', 'ai-c')
         plat_liste.querySelector('.onError h3').textContent = 'Erreur de connexion au serveur'
@@ -698,33 +804,7 @@ async function get_details(id){
     }
 }
 
-async function get_table(){
-    try{
-        const response = await fetch('/table')
-
-        return response.ok ? await response.json() : []
-    } catch(err){
-        console.log(err)
-        return []
-    }
-}
-async function patch_commande(id, status){
-    try{
-        const response = await fetch(`/commande/${id}`, {
-            method: 'PATCH',
-            headers: {
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({ status: status })
-        })
-        const result = await response.json()
-
-        return result
-    } catch(err){
-        console.log(err)
-        return { erreur: 'Erreur de connexion serveur'}
-    }
-}
+// Suppression d'un plat commandé
 async function delete_details(id_detail, id_commande){
     try{
         const response = await fetch(`/details/${id_detail}`, { 
@@ -742,6 +822,8 @@ async function delete_details(id_detail, id_commande){
         return { erreur: 'Erreur de connexion serveur'}
     }
 }
+
+//Modification des détails du plat commandé
 async function patch_detail(id_detail, quantite){
     try{
         const response = await fetch(`/details/${id_detail}`, {
