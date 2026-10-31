@@ -62,22 +62,29 @@ router.get('/:id', async (req, res) => {
 // post commande
 router.post('/', async (req, res) => {
   const corps = req.body || {};
-  const numTable = corps.num_table;
-  if (!numTable) {
-    return res.status(400).json({ erreur: 'num_table obligatoire' });
+  const numTable = corps?.num_table;
+  if (!numTable || !isFinite(numTable) || numTable <= 0 || numTable != parseInt(numTable)) {
+    return res.status(400).json({ erreur: 'num_table doit être non nul, fini, positif et entier' });
   }
 
-  const plats = (corps.plats) ? corps.plats : [];
-  if (!Array.isArray(plats)) {
-    return res.status(400).json({ erreur: 'plats doit être une liste' });
+  const plats = corps?.plats;
+  if (!Array.isArray(plats) || !plats.length) {
+    return res.status(400).json({ erreur: 'plats doit être une liste et non vide' });
   }
+
   const lignes = [];
   for (const p of plats) {
     const idPlat = p?.id_plat;
-    const quantite = p?.quantite;
-    if (!idPlat || !quantite) {
-      return res.status(400).json({ erreur: 'chaque plat doit avoir id_plat et quantite' });
+
+    if (!idPlat || !isFinite(idPlat) || idPlat <= 0 || idPlat != parseInt(idPlat)){
+      return res.status(400).json({ erreur: 'id_plat doit être non nul, fini, positif et entier' });
     }
+
+    const quantite = p?.quantite;
+    if (!quantite || !isFinite(quantite) || quantite <= 0 || quantite != parseInt(quantite)) {
+      return res.status(400).json({ erreur: 'quantite doit être non nul, fini, positif et entier' });
+    }
+
     lignes.push([idPlat, quantite]);
   }
 
@@ -90,7 +97,7 @@ router.post('/', async (req, res) => {
       [numTable]
     )
 
-    if (!resultTable?.length){
+    if (resultTable.length === 0){
       res.status(404).json({ erreur: 'num_table non existant'})
       return
     }
@@ -139,7 +146,7 @@ router.delete('/:id', async (req, res) => {
       return
     }
   
-    res.end()
+    res.status(200).json({ success: 'Commande supprimée' })
   } catch(erreur){
     console.log(erreur)
     res.status(500).json({ erreur: 'Erreur de connexion au serveur'})
@@ -164,9 +171,8 @@ router.patch('/:id', async (req, res) => {
       'UPDATE commande SET statut = ? WHERE id_commande = ?',
       [ status, id ]
     )
-    const { info } = resultat
 
-    if (info.includes('Rows matched: 0')){
+    if (resultat.affectedRows === 0){
       res.status(404).json({ erreur: 'Aucune commande correspondante'})
       return
     }

@@ -292,9 +292,30 @@ body{
                                 gap: .5em;
 
                                 button{
-                                    padding: .2em 1em;
+                                    padding: .2em .5em;
                                     border-radius: .5em;
                                     border: 2px solid transparent;
+                                }
+                                &.edit{
+                                    input{
+                                        flex: 1;
+                                        width: 30px;
+                                    }
+                                    button:last-child{
+                                        &:disabled{
+                                            background-color: rgba(100, 100, 200, .5);
+                                        }
+                                    }
+                                }
+                            }
+                            &:not(.inEditing){
+                                .edit{
+                                    display: none;
+                                }
+                            }
+                            &.inEditing{
+                                .control{
+                                    display: none;
                                 }
                             }
                         }

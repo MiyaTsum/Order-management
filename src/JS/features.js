@@ -293,6 +293,7 @@ async function post_commande(commande){
         if (!response.ok){
             win.classList.replace('loading', 'failed')
             win.querySelector('.onFailed h3').textContent = "Erreur lors de l'envoi de la commande"
+            console.log(await response.json())
             return
         }
 
@@ -385,8 +386,15 @@ export async function find_commande(){
     const commandes = commandes_liste.querySelectorAll('.commandes')
     
     commandes.forEach(each => {
-        const filtrageParStatus = (filtre == 'total') ? 'block' : ((filtre == each.dataset.status) ? 'block' : 'none')
-        const filtrageParId = (!value || `${each.dataset.id}`.startsWith(value)) ? (filtrageParStatus) : 'none'
+        const { dataset } = each
+
+        if (dataset.status == 'null'){
+            each.style.display = 'none'
+            return
+        }
+
+        const filtrageParStatus = (filtre == 'total') ? 'block' : ((filtre == dataset.status) ? 'block' : 'none')
+        const filtrageParId = (!value || `${dataset.id}`.startsWith(value)) ? (filtrageParStatus) : 'none'
         each.style.display = filtrageParId
     })
     commandes_liste.classList[(Array.from(commandes).every(each => getComputedStyle(each).display == 'none')) ? 'add' : 'remove']('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
@@ -396,17 +404,9 @@ async function delete_commande(id){
     let com_node = null
     let com_status = null
     const notif = document.createElement('div')
-    const observer = new MutationObserver(([ mutation ]) => {
-        if (mutation.attributeName == 'style'){
-            const isShowed = getComputedStyle(com_node).display == 'block'
-
-            if (isShowed) com_node.style.display = 'none'
-        }
-    })
     const undo = () => {
         clearTimeout(delay)
         notif.remove()
-        observer.disconnect()
         com_node.dataset.status = com_status
         update_nav()
         find_commande()
@@ -414,7 +414,6 @@ async function delete_commande(id){
     const permDel = () => {
         notif.remove()
         com_node.remove()
-        observer.disconnect()
     }
     const delay = setTimeout(async () => {
         try{
@@ -447,14 +446,13 @@ async function delete_commande(id){
         if (com.dataset.id == id){
             com_node = com
             com_status = com.dataset.status
+            com_node.dataset.status = null
             break
         }
     }
-    com_node.style.display = 'none'
-    com_node.dataset.status = null
-    observer.observe(com_node, { attributes: true })
-    update_nav()
-    find_commande()
+    
+    await update_nav()
+    await find_commande()
 
     notif.querySelector('button').addEventListener('click', undo)
 }
@@ -485,7 +483,7 @@ export async function show_details(id, ds, total){
             </div>
         </fieldset>
         <div class="footer d-f jc-sb">
-            <h3 class="d-f jc-e ai-c"><span>Total: </span><span>$${total}</span></h3>
+            <h3 class="d-f jc-e ai-c"><span>Total: </span><span>$${Number(total)}</span></h3>
             <button class="main_button">Supprimer</button>
         </div>
     `
@@ -536,17 +534,19 @@ export async function show_details(id, ds, total){
 
     if (lignes && lignes.length){
         const plat_liste = win.querySelector('.plats')
-        for (const { id_detail, nom_plat, quantite, sous_total } of lignes){
-            plat_liste.appendChild(plat_commandé(id_detail, nom_plat, quantite, sous_total))
+        for (const { id_detail, prix, nom_plat, quantite, sous_total } of lignes){
+            plat_liste.appendChild(plat_commandé(id_detail, prix, nom_plat, quantite, sous_total))
         }
-        win.querySelector('.footer h3 span:last-child').textContent = `$${String(details.total).padEnd(4, '0')}`
+        win.querySelector('.footer h3 span:last-child').textContent = `$${Number(details.total)}`
     }
 
     win.querySelectorAll('.plat_commandé')
         .forEach(each => {
             const { id_detail } = each.dataset
-            each.querySelector('div button').addEventListener('click', async () => {
-                const result = await delete_details(id_detail)
+            const [ supp, edit ] = each.querySelectorAll('.control button')
+
+            supp.addEventListener('click', async () => {
+                const result = await delete_details(id_detail, id)
 
                 if (result.erreur){
                     console.log(result.erreur)
@@ -554,24 +554,104 @@ export async function show_details(id, ds, total){
                 }
 
                 each.remove()
-                const details = await get_details(id)
-                const lignes = details?.lignes
 
-                if (!lignes.length){
+                if (result.success == 'plat commandé supprimé'){
+                    const pTotal =
+                        Array.from(win.querySelectorAll('.plat_commandé')).reduce((total, { dataset }) => {
+                            const { quantite, prix } = dataset
+                        
+                            return (Number(quantite) * Number(prix)) + total
+                        }, 0)
+
+                    win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal)}`
                     for (const com of commandes_liste.querySelectorAll('.commandes')){
                         if (Number(com.dataset.id) == id){
-                            com.remove()
+                            com.querySelector('h3').textContent =`Total: $${pTotal}`
                             break
                         }
                     }
-                    await fetch(`/commande/${id}`, { method: 'DELETE' })
-                    await update_nav()
-                    await find_commande()
-
-                    modal.style.display = 'none'
-                    win.classList.remove('details_commande', 'd-f', 'fd-cl')
-                    win.innerHTML = ''
+                    return
                 }
+
+                for (const com of commandes_liste.querySelectorAll('.commandes')){
+                    if (Number(com.dataset.id) == id){
+                        com.remove()
+                        break
+                    }
+                }
+                await update_nav()
+                await find_commande()
+
+                modal.style.display = 'none'
+                win.classList.remove('details_commande', 'd-f', 'fd-cl')
+                win.innerHTML = ''
+            })
+            edit.addEventListener('click', () => {
+                const [ cancl, confrm ] = each.querySelectorAll('.edit button')
+                const quantite = each.querySelector('.edit input')
+                let previous_value = ''
+
+                each.classList.add('inEditing')
+                quantite.focus()
+                quantite.value = each.dataset.quantite
+
+                quantite.addEventListener('input', (e) => {
+                    const { currentTarget: target } = e
+                    const value = Number(target.value)
+                    
+                    confrm.disabled = !value || value < 0 || value != parseInt(value)
+
+                    if (value >= 100){
+                        target.value = previous_value
+                        return
+                    }
+
+                    previous_value = String(value)
+                })
+                confrm.addEventListener('click', async () => {
+                    const result = await patch_detail(each.dataset.id_detail, Number(quantite.value))
+
+                    if (result.erreur){
+                        console.log(result.erreur)
+                    } else {
+                        const inf = each.querySelector('p span:first-child')
+                        const [nom_plat] = inf.textContent.split('*')
+                        const sous_total = each.querySelector('p span:last-child')
+    
+                        each.dataset.quantite = quantite.value
+                        inf.textContent = nom_plat + '*' + ` ${quantite.value}`
+                        sous_total.textContent = `$${Number(each.dataset.prix) * Number(each.dataset.quantite)}`
+    
+                        const pTotal = 
+                                Array.from(win.querySelectorAll('.plat_commandé')).reduce((total, { dataset }) => {
+                                    const { quantite, prix } = dataset
+                                
+                                    return (Number(quantite) * Number(prix)) + total
+                                }, 0)
+                        win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal)}`
+
+                        for (const com of commandes_liste.querySelectorAll('.commandes')){
+                            if (Number(com.dataset.id) == id){
+                                com.querySelector('h3').textContent = `Total: $${pTotal}`
+                                break
+                            }
+                        }
+                    }
+
+                    each.classList.remove('inEditing')
+                })
+                cancl.addEventListener('click', function(e){
+                    each.classList.remove('inEditing')
+                    e.currentTarget.removeEventListener('click', this)
+                })
+                win.addEventListener('click', function(e){
+                    const { target } = e
+
+                    if (!each.contains(target)){
+                        each.classList.remove('inEditing')
+                        win.removeEventListener('click', this)
+                    }
+                })
             })
         })
 }
@@ -645,14 +725,37 @@ async function patch_commande(id, status){
         return { erreur: 'Erreur de connexion serveur'}
     }
 }
-async function delete_details(id_detail){
+async function delete_details(id_detail, id_commande){
     try{
-        const response = await fetch(`/details/${id_detail}`, { method: 'DELETE' })
+        const response = await fetch(`/details/${id_detail}`, { 
+            method: 'DELETE',
+            headers: {
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({ id_commande: id_commande })
+         })
         const result = await response.json()
 
         return result
     } catch(err){
         console.log(err)
         return { erreur: 'Erreur de connexion serveur'}
+    }
+}
+async function patch_detail(id_detail, quantite){
+    try{
+        const response = await fetch(`/details/${id_detail}`, {
+            method: 'PATCH',
+            headers: {
+                'content-type' : 'application/json'
+            },
+            body: JSON.stringify({ quantite: quantite })
+        })
+        const result = await response.json()
+
+        return result
+    } catch(err){
+        console.log(err)
+        return { erreur: 'Erreur de connexion au serveur'}
     }
 }
