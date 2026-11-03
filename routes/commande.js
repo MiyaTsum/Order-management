@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../config/db');
+const entierPositif = require('../config/outils')
 const router = express.Router();
-
 
 // get commande
 router.get('/', async (req, res) => {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!id || !isFinite(id) || id <= 0 || id != parseInt(id)){
+  if (!entierPositif(id)){
     return res.status(400).json({ erreur: 'id invalide (doit être un nombre non nul, fini, positif et entier' });
   }
   try {
@@ -64,7 +64,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const corps = req.body || {};
   const numTable = corps?.num_table;
-  if (!numTable || !isFinite(numTable) || numTable <= 0 || numTable != parseInt(numTable)) {
+  if (!entierPositif(numTable)) {
     return res.status(400).json({ erreur: 'num_table doit être non nul, fini, positif et entier' });
   }
 
@@ -77,12 +77,12 @@ router.post('/', async (req, res) => {
   for (const p of plats) {
     const idPlat = p?.id_plat;
 
-    if (!idPlat || !isFinite(idPlat) || idPlat <= 0 || idPlat != parseInt(idPlat)){
+    if (!entierPositif((idPlat))){
       return res.status(400).json({ erreur: 'id_plat doit être non nul, fini, positif et entier' });
     }
 
     const quantite = p?.quantite;
-    if (!quantite || !isFinite(quantite) || quantite <= 0 || quantite != parseInt(quantite)) {
+    if (!entierPositif(quantite)) {
       return res.status(400).json({ erreur: 'quantite doit être non nul, fini, positif et entier' });
     }
 
@@ -130,7 +130,7 @@ router.post('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!id || !isFinite(id) || id <= 0 || id != parseInt(id)){
+  if (!entierPositif(id)){
     res.status(400).json({ erreur: 'id invalide (doit être un nombre non nul, fini, positif et entier' })
     return
   }
@@ -156,8 +156,8 @@ router.delete('/:id', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   const id = Number(req.params.id)
-  if (!id || id <= 0 || id != parseInt(id)){
-    res.status(400).json({ erreur: 'id invalide (doit être non nul, positif et entier)'})
+  if (!entierPositif(id)){
+    res.status(400).json({ erreur: 'id invalide (doit être non nul, fini, positif et entier)'})
     return
   }
 

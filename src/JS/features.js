@@ -410,21 +410,21 @@ async function update_nav(){
 //Récupération du catalogue de plat
 async function get_plat(){
     const win = modal.querySelector('article .main')
-
+    
     if (win.classList.contains('failed')) win.classList.remove('failed')
-    win.classList.add('loading', 'ai-c', 'jc-c')
-
+        win.classList.add('loading', 'ai-c', 'jc-c')
+    
     try{
         const control = new AbortController() //Pour annuler la requête en cas de fermeture du module lors de l'envoie de la requête
         const observer = new MutationObserver(([mutation]) => {
             if (mutation.attributeName == 'style'){
                 const isClose = getComputedStyle(modal).display == 'none'
-
+                
                 if (isClose) control.abort()
-            }
+                }
         }) // Observation et vérification de la fermeture du module à chaque mutation de style
-        const response = await fetch(`http://${location.host}/plat`, { signal: control.signal })
-
+        const response = await fetch('/plat', { signal: control.signal })
+        
         observer.observe(modal, { attributes: true }) // Activation de l'observateur
         
         if (!response.ok){
@@ -432,13 +432,14 @@ async function get_plat(){
             win.querySelector('.onFailed h3').textContent = 'Erreur de chargement du catalogue'
             return
         }
-
+        
         //Ajout des plats dans le catalogue
         const data = await response.json()
         win.classList.remove('loading', 'ai-c', 'jc-c')
-        data.forEach(each => {
-            win.appendChild(plat(...Object.values(each)))
-        })
+        for (const plats of data){
+            const p_node = plat(...Object.values(plats))
+            win.appendChild(p_node)
+        }
         
         return
 
@@ -477,7 +478,7 @@ export async function show_details(id, dataset, total){
             </div>
         </fieldset>
         <div class="footer d-f jc-sb">
-            <h3 class="d-f jc-e ai-c"><span>Total: </span><span>$${Number(total)}</span></h3>
+            <h3 class="d-f jc-e ai-c"><span>Total: </span><span>$${Number(total).toFixed(2)}</span></h3>
             <button class="main_button">Supprimer</button>
         </div>
     `
@@ -539,7 +540,7 @@ export async function show_details(id, dataset, total){
         for (const { id_detail, prix, nom_plat, quantite, sous_total } of lignes){
             plat_liste.appendChild(plat_commandé(id_detail, prix, nom_plat, quantite, sous_total))
         }
-        win.querySelector('.footer h3 span:last-child').textContent = `$${Number(details.total)}`
+        win.querySelector('.footer h3 span:last-child').textContent = `$${Number(details.total).toFixed(2)}`
     }
 
 
@@ -574,7 +575,7 @@ export async function show_details(id, dataset, total){
                     win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal)}`
                     for (const com of commandes_liste.querySelectorAll('.commandes')){
                         if (Number(com.dataset.id) == id){
-                            com.querySelector('h3').textContent =`Total: $${pTotal}`
+                            com.querySelector('h3').textContent =`Total: $${pTotal.toFixed(2)}`
                             break
                         }
                     }
@@ -634,7 +635,7 @@ export async function show_details(id, dataset, total){
                         // Mise à jour du dataset et des affichages (prix et quantite) des details et commandes
                         each.dataset.quantite = quantite.value
                         inf.textContent = nom_plat + '*' + ` ${quantite.value}`
-                        sous_total.textContent = `$${Number(each.dataset.prix) * Number(each.dataset.quantite)}`
+                        sous_total.textContent = `$${(Number(each.dataset.prix) * Number(each.dataset.quantite)).toFixed(2)}`
     
                         // Calcul du nouveau prix total
                         const pTotal = 
@@ -643,10 +644,10 @@ export async function show_details(id, dataset, total){
                                 
                                     return (Number(quantite) * Number(prix)) + total
                                 }, 0)
-                        win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal)}`
+                        win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal).toFixed(2)}`
                         for (const com of commandes_liste.querySelectorAll('.commandes')){
                             if (Number(com.dataset.id) == id){
-                                com.querySelector('h3').textContent = `Total: $${pTotal}`
+                                com.querySelector('h3').textContent = `Total: $${pTotal.toFixed(2)}`
                                 break
                             }
                         }
@@ -775,7 +776,7 @@ async function get_details(id){
                 if (isClosed) control.abort()
             }
         })
-        const response = await fetch(`http://${location.host}/commande/${id}`, { signal: control.signal })
+        const response = await fetch(`/commande/${id}`, { signal: control.signal })
 
         observer.observe(modal, { attributes: true })
 
