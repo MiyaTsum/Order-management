@@ -25,7 +25,7 @@ router.delete('/:id', async (req, res) => {
         }
 
         const { id_commande } = req.body
-        if (!entierPositif(id)){
+        if (!entierPositif(id_commande)){
             await connexion.rollback()
             res.status(400).json({ erreur: 'opération interrompue (cause: id_commande invalide; id_commande doit être un nombre non nul, fini, positiif et entier)'})
             return

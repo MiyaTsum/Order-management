@@ -98,7 +98,7 @@ export async function create_commande(){
     </div>
     <div class="footer d-f jc-sb ai-c">
         <div class="inf">
-            <input type="number" min="1" ${!max ? 'disabled' : `max=${max} placeholder='Table 1-${max}'`} placeholder="num table">
+            <input type="number" min="1" placeholder="num_table" ${!max ? 'disabled' : `max=${max} placeholder='Table 1-${max}'`}>
         </div>
         <div class="control">
             <button class="cancel secondary_button">Annuler</button>
@@ -111,6 +111,17 @@ export async function create_commande(){
     const btn_nav = win.querySelectorAll('.header .nav button')
     const btn_confirm = win.querySelector('.footer .control .confirm')
     const num_table = win.querySelector('.footer .inf input')
+
+    const hanldeInput = (e) => {
+        const { currentTarget: target } = e
+        const { value } = target
+        
+        if (Number(value) > max) target.value = previous_value
+        else {
+            btn_confirm.disabled = !value || Number(value) <= 0 || !new_com.length
+            previous_value = value
+        }
+    }
 
     //Fermeture et annulation de la création de la commande
     win.querySelectorAll('.header .head .exit, .footer .control .cancel')
@@ -130,16 +141,7 @@ export async function create_commande(){
     })
 
     //Selection du numéro de table et gestion des saisie utilisateurs
-    num_table.addEventListener('input', (e) => {
-        const { currentTarget: target } = e
-        const { value } = target
-        
-        if (Number(value) > max) target.value = previous_value
-        else {
-            btn_confirm.disabled = !value || Number(value) <= 0 || !new_com.length
-            previous_value = value
-        }
-    })
+    if (table.length) num_table.addEventListener('input', hanldeInput)
 
     //Confirmation et envoi des détails de la commande
     btn_confirm.addEventListener('click', () => {
@@ -155,6 +157,12 @@ export async function create_commande(){
 
     //Récupération et affichage du catalogue
     const refresh = async () => {
+        const table = await get_table()
+        if (table.length){
+            num_table.max = `${table.length ? table.reduce((num_max, { num_table }) => num_max < num_table ? num_table : num_max, 0) : null}`
+            num_table.disabled = false
+            num_table.placeholder = `Table 1-${num_table.max}`
+        }
         await get_plat()
         await filterCatalogue(categorie)
 
@@ -190,6 +198,7 @@ export async function create_commande(){
                 const handleAdd = () => {
                     each.classList.add('added')
 
+                    quantite.focus()
                     quantite.value = 1
                     quantite.addEventListener('input', change_value)
                     quantite.addEventListener('blur', handleBlur)
