@@ -1,50 +1,87 @@
 import { art_commande, plat, plat_commandé } from "./component.js"
 
-let filtre = 'total' //Stockage de la condition de filtrage ('total', 'en_cours', 'servie', 'payée')
+export let filtre = 'total' //Stockage de la condition de filtrage ('total', 'en_cours', 'servie', 'payée')
+export let stat = {
+    nb_commandes: 0,
+    en_cours: 0,
+    servie: 0,
+    payée: 0,
+    chiffres_affaires: 0,
+    total_moyen: 0,
+    total_min: 0,
+    total_max: 0
+}
 
 const commandes_liste = document.querySelector('#liste')
 const modal = document.querySelector('#modal')
 
 //Modification de la condition de filtrage et mise à jour des états des bouttons
-export function handleFilter(e){
-    const { currentTarget: target } = e
-    const { id } = target
-    filtre = id
+export async function handleFilter(id){
+    try{
+        const response = await fetch(id == 'total' ? '/commande' :`/commande/statut/${id}`)
 
-    document.querySelectorAll('header nav button')
-            .forEach(each => {
-                const isTarget = each == target
-                const classes = isTarget ? ["secondary_button", "main_button"] : ["main_button", "secondary_button"]
-                each.classList[isTarget ? 'add' : 'remove']('selected')
-                each.classList.replace(...classes)
+        if (response.ok){
+            const data = await response.json()
+
+            filtre = id
+            document.querySelectorAll('body main header nav button')
+                    .forEach(each => {
+                        const isTarget = each.id == id
+                        const classes = isTarget ? ["secondary_button", "main_button"] : ["main_button", "secondary_button"]
+                        each.classList[isTarget ? 'add' : 'remove']('selected')
+                        each.classList.replace(...classes)
+                    })
+            commandes_liste.classList.remove('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
+            commandes_liste.querySelectorAll('.commandes').forEach(each => each.remove())
+
+            if (!data.length){
+                commandes_liste.classList.add('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
+                return
+            }
+
+            data.forEach(each => {
+                const new_node = art_commande(...Object.values(each))
+                commandes_liste.append(new_node)
             })
-    find_commande()
+        }
+    } catch(err){
+        console.log(err)
+    }
 }
 
-//Filtrage des commandes
-export async function find_commande(){
-    const { value } = document.querySelector('#search input') //Condition de recherche (ID)
+// Mise à jour des statistiques
+async function updateStat(){
     const commandes = commandes_liste.querySelectorAll('.commandes')
-    
-    commandes.forEach(each => {
-        const { dataset } = each
+    const data = Array.from(commandes).map(({ dataset }) => parseFloat(dataset.total))
 
-        if (dataset.status == 'null'){
-            each.style.display = 'none'
-            return
+    stat.nb_commandes = commandes.length
+    stat.en_cours = Array.from(commandes).filter(({ dataset }) => dataset.status == 'en_cours').length
+    stat.servie = Array.from(commandes).filter(({ dataset }) => dataset.status == 'servie').length
+    stat.payée = Array.from(commandes).filter(({ dataset }) => dataset.status == 'payée').length
+    stat.chiffres_affaires = data.reduce((CA, each) => CA + each)
+    stat.total_moyen = stat.chiffres_affaires / stat.nb_commandes
+    stat.total_max = data.reduce((max, each) => max < each ? each : max)
+    stat.total_min = data.reduce((min, each) => min > each ? each : min)
+}
+
+export async function find_commande(id){
+    try{
+        const response = await fetch(`/commande/${id}`)
+
+        commandes_liste.querySelectorAll('.commandes')
+                        .forEach(each => each.remove())
+        if (response.status == 404){
+            commandes_liste.classList.add('empty', 'd-f', 'fd-cl', 'ai-c', 'jc-c')
         }
-
-        //Filtrage en fonction de la condition de recherche par le filtre
-        const filtrageParStatus = (filtre == 'total') ? 'block' : ((filtre == dataset.status) ? 'block' : 'none')
-
-        //Filtrage en fonction de la condition de recherche par ID
-        const filtrageParId = (!value || `${dataset.id}`.startsWith(value)) ? (filtrageParStatus) : 'none'
-        each.style.display = filtrageParId
-    })
-
-    //Vérification en cas d'absence de correspondance
-    const empty = Array.from(commandes).every(each => getComputedStyle(each).display == 'none')
-    commandes_liste.classList[empty ? 'add' : 'remove']('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
+        else if (response.ok){
+            const data = await response.json()
+            delete data.lignes
+            commandes_liste.classList.remove('empty', 'd-f', 'fd-cl', 'ai-c', 'jc-c')
+            commandes_liste.append(art_commande(...Object.values(data)))
+        }
+    } catch(err){
+        console.log(err)
+    }
 }
 
 //Ouverture du catalogue et création d'une commande
@@ -334,7 +371,8 @@ async function post_commande(commande){
         win.classList.remove('done', 'catalogue', 'ai-c', 'jc-c')
         win.innerHTML = ''
         modal.style.display = 'none'
-        await get_commandes()
+        await handleFilter(filtre)
+        await updateStat()
         return
     } catch (err){
         win.classList.replace('loading', 'failed')
@@ -346,12 +384,6 @@ async function post_commande(commande){
 
 // Récupération de la liste des commandes
 export async function get_commandes(){
-    const commandes_chargées = {} // Table de vérité des commandes déjà chargées
-    commandes_liste.querySelectorAll('.commandes')
-                    .forEach(each => {
-                        commandes_chargées[each.dataset.id] = true
-                    })
-    
     commandes_liste.classList.remove('error', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
     try{
         const response = await fetch('/commande')
@@ -367,53 +399,21 @@ export async function get_commandes(){
         
         // Eviter le cas d'une liste vide
         if (length){
+            commandes_liste.classList.remove('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
             data.forEach((each) => {
-                // Ajout dans la liste si la commande n'est pas encore déjà chargée et affichée
-                if (!commandes_chargées[each.id_commande]) commandes_liste.appendChild(art_commande(...Object.values(each)))
+                commandes_liste.appendChild(art_commande(...Object.values(each)))
             })
-        }
 
-        await find_commande()
-        await update_nav()
-        
+            await updateStat()
+        } else {
+            commandes_liste.classList.add('empty', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
+        }
     } catch (err){
         commandes_liste.classList.add('error', 'd-f', 'fd-cl', 'jc-c', 'ai-c')
         commandes_liste.querySelector('.onError h3').textContent = 'Erreur de connexion au serveur'
         console.log(err)
         return 
     }
-}
-
-// Mise à jour des bouttons de navigation
-async function update_nav(){
-    const liste = commandes_liste.querySelectorAll('.commandes')
-    let length = 0
-    let en_cours = 0
-    let servie = 0
-    let payée = 0
-    
-    liste.forEach(({ dataset }) => {
-        const { status } = dataset
-        if (status == 'en_cours'){
-            en_cours += 1
-        } else if (status == 'servie'){
-            servie += 1
-        } else if (status == 'payée'){
-            payée += 1
-        }
-    })
-    length = en_cours + servie + payée
-
-    document.querySelector('#en_cours span:last-child').innerHTML = `(${en_cours})`
-    document.querySelector('#servie span:last-child').innerHTML = `(${servie})`
-    document.querySelector('#payée span:last-child').innerHTML = `(${payée})`
-    document.querySelector('#total span:last-child').innerHTML = `(${length})`
-    document.querySelector('#search input').disabled = !length
-    document.querySelectorAll('header nav button').forEach(each => {
-                each.disabled = !length
-            })
-
-    return
 }
 
 //Récupération du catalogue de plat
@@ -461,6 +461,14 @@ async function get_plat(){
 
 // Affichage des détails de la commannde et gestion des mises à jour et suppression
 export async function show_details(id, dataset, total){
+    document.querySelector('#search input').value = ''
+    document.querySelector('#search button').disabled = true
+    document.querySelectorAll('body main header nav button')
+            .forEach( each => each.disabled = false)
+    document.querySelector('#create').disabled = false
+    document.querySelector('#liste .noResult button').style.display = 'block'
+    await handleFilter(filtre)
+
     const win = modal.querySelector('article')
     
     // Ouverture du module
@@ -506,7 +514,6 @@ export async function show_details(id, dataset, total){
             const { currentTarget: target } = e
             const { value } = target
             const result = await patch_commande(id, value) // Resultat de mise à jour de la commande
-            let current_com = null
 
             // En cas d'échec
             if (!result.success){
@@ -514,20 +521,8 @@ export async function show_details(id, dataset, total){
                 return
             }
 
-            // Mise à jour de l'affichage de la commande dans la liste et de son dataset
-            for (const com of Array.from(commandes_liste.querySelectorAll('.commandes'))){
-                if (Number(com.dataset.id) === id){
-                    current_com = com
-                    break
-                }
-            }
-            const label = current_com.querySelector('.status')
-            label.classList.replace(dataset.status, value === "en cours" ? 'en_cours' : value)
-            label.textContent = value
-            current_com.dataset.status = value === 'en cours' ? 'en_cours' : value
-
-            await update_nav()
-            await find_commande()
+            await handleFilter(filtre)
+            await updateStat()
         })
 
     // Gestion de la suppression de la commande
@@ -581,30 +576,24 @@ export async function show_details(id, dataset, total){
                         }, 0)
 
                     // Mise à jour de l'affichage des détails du module (prix total) et de la commande correspondant dans la liste
-                    win.querySelector('.footer h3 span:last-child').textContent = `$${(pTotal)}`
+                    win.querySelector('.footer h3 span:last-child').textContent = `$${pTotal.toFixed(2)}`
                     for (const com of commandes_liste.querySelectorAll('.commandes')){
                         if (Number(com.dataset.id) == id){
+                            com.dataset.total = pTotal
                             com.querySelector('h3').textContent =`Total: $${pTotal.toFixed(2)}`
                             break
                         }
                     }
+                    await updateStat()
                     return
                 }
 
-                // En cas où il n'y a plus de plat dans la liste des plats commandés
-                for (const com of commandes_liste.querySelectorAll('.commandes')){
-                    if (Number(com.dataset.id) == id){
-                        // Retrait de la commande de l'affichage
-                        com.remove()
-                        break
-                    }
-                }
-                await update_nav()
-                await find_commande()
-
+                // Suppression de la commande
                 modal.style.display = 'none'
                 win.classList.remove('details_commande', 'd-f', 'fd-cl')
                 win.innerHTML = ''
+                await handleFilter(filtre)
+                await updateStat()
             })
             edit.addEventListener('click', () => {
                 const [ cancl, confrm ] = each.querySelectorAll('.edit button')
@@ -705,23 +694,16 @@ async function patch_commande(id, status){
 async function delete_commande(id){
     const notif = document.createElement('div')
 
-    // Back up en cas d'annulation 
-    let com_node = null
+    // Back up en cas d'annulation
     let com_status = null
 
     // Annulation de suppression
-    const undo = () => {
+    const undo = async () => {
         clearTimeout(delay)
         notif.remove()
-        com_node.dataset.status = com_status
-        update_nav()
-        find_commande()
-    }
-
-    //Suppresion définitive
-    const permDel = () => {
-        notif.remove()
-        com_node.remove()
+        await patch_commande(id, com_status)
+        await handleFilter(filtre)
+        await updateStat()
     }
 
     // Retardement de l'envoi de la requête de suppression
@@ -737,7 +719,7 @@ async function delete_commande(id){
             }
 
             console.log(result.success)
-            permDel()
+            notif.remove()
         } catch(err){
             undo()
             console.log(err)
@@ -758,19 +740,17 @@ async function delete_commande(id){
     // Recherche de la commande correspondante
     for (const com of (commandes_liste.querySelectorAll('.commandes'))){
         if (com.dataset.id == id){
-            com_node = com
             com_status = com.dataset.status
-            com_node.dataset.status = null
+            com_status = com_status == 'en_cours' ? 'en cours' : com_status
             break
         }
     }
-    
-    await update_nav()
-    await find_commande()
+    await patch_commande(id, 'toDelete')
+    await updateStat()
+    await handleFilter(filtre)
 
     notif.querySelector('button').addEventListener('click', undo)
 }
-
 
 // Récupération des details d'une commande
 async function get_details(id){

@@ -31,13 +31,24 @@ body{
             border-radius: .5em;
         }
         header{
+            position: relative;
             padding: .5em;
+
+            & > button{
+                position: absolute;
+                top: 1em;
+                right: .5em;
+                padding: 0;
+                background-color: transparent;
+                border: none;
+            }
             h2{
                 padding: .2em;
                 color: #5050af;
                 margin-bottom: .2em;
             }
             nav{
+                margin-top: .2em;
                 gap: .2em;
                 overflow-x: auto;
                 overflow-y: hidden;
@@ -77,6 +88,10 @@ body{
                 border-radius: .5em;
                 padding: .5em 1em;
                 font-weight: 900;
+
+                &:disabled{
+                    background-color: rgba(100, 100, 200, .5);
+                }
             }
         }
         & > section{
@@ -468,9 +483,6 @@ body{
                                     font-weight: 900;
                                     appearance: textfield;
 
-                                    &:focus{
-                                        outline: none;
-                                    }
                                     &::-webkit-inner-spin-button,
                                     &::-webkit-outer-spin-button{
                                         -webkit-appearance: none;

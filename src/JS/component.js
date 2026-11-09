@@ -8,6 +8,7 @@ export function art_commande(id, table, datetime, status, total){
     
     article.dataset.id = id
     article.dataset.status = statusClasse
+    article.dataset.total = total
     article.classList.add('commandes')
     article.innerHTML = `
         <p class="d-f ai-c"><span>#${id}</span><span class="status ${statusClasse}">${status}</span></p>

@@ -13,9 +13,11 @@ router.get('/', async (req, res) => {
        JOIN tble t ON t.id_table = c.id_table
        LEFT JOIN details_commande d ON d.id_commande = c.id_commande
        LEFT JOIN plat p ON p.id_plat = d.id_plat
+       WHERE statut <> 'toDelete'
        GROUP BY c.id_commande, t.num_table, c.date_commande, c.statut
        ORDER BY c.date_commande DESC`
     );
+
     res.json(lignes);
   } catch (erreur) {
     console.log(erreur)
@@ -24,7 +26,6 @@ router.get('/', async (req, res) => {
 });
 
 // facture d'une commande
-
 router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!entierPositif(id)){
@@ -59,6 +60,33 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.get('/statut/:filter', async (req, res) => {
+  const {filter} = req.params
+  if (!['en_cours', 'servie', 'payée'].includes(filter)){
+    res.status(404).json({ erreur: 'Statut non valide'})
+    return
+  }
+
+  try{
+    const [lignes] = await db.execute(
+      `SELECT c.id_commande, t.num_table, c.date_commande, c.statut,
+              COALESCE(SUM(p.prix * d.quantite), 0) AS total
+       FROM commande c
+       JOIN tble t ON t.id_table = c.id_table
+       LEFT JOIN details_commande d ON d.id_commande = c.id_commande
+       LEFT JOIN plat p ON p.id_plat = d.id_plat
+       WHERE statut = ?
+       GROUP BY c.id_commande, t.num_table, c.date_commande, c.statut
+       ORDER BY c.date_commande DESC`,
+      [filter == 'en_cours' ? 'en cours' : filter]
+    )
+
+    res.json(lignes)
+  } catch(err){
+    console.log(err)
+    res.status(500).json({ erreur: 'Erreur de communication avec la BD'})
+  }
+})
 
 // post commande
 router.post('/', async (req, res) => {
@@ -162,7 +190,7 @@ router.patch('/:id', async (req, res) => {
   }
 
   const { status } = req.body
-  if (!status || !['en cours', 'servie', 'payée'].includes(status)){
+  if (!status || !['en cours', 'servie', 'payée', 'toDelete'].includes(status)){
     res.status(400).json({ erreur: 'Le facteur de mise à jour (status) doit être donnée et parmis les cas suivant: en cours, servie ou payée'})
     return
   }
